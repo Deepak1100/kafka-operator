@@ -32,7 +32,8 @@ import (
 	kafkautils "github.com/banzaicloud/kafka-operator/pkg/util/kafka"
 )
 
-func (r *Reconciler) deployment(log logr.Logger, extListener v1beta1.ExternalListenerConfig) runtime.Object {
+func (r *Reconciler) deployment(log logr.Logger, extListener v1beta1.ExternalListenerConfig,
+	envoyConfig v1beta1.EnvoyConfig) runtime.Object {
 
 	configMapName := fmt.Sprintf(envoyVolumeAndConfigName, extListener.Name, r.KafkaCluster.GetName())
 	exposedPorts := getExposedContainerPorts(extListener,
@@ -61,31 +62,31 @@ func (r *Reconciler) deployment(log logr.Logger, extListener v1beta1.ExternalLis
 		ObjectMeta: templates.ObjectMetaWithAnnotations(
 			fmt.Sprintf(envoyDeploymentName, extListener.Name, r.KafkaCluster.GetName()),
 			labelsForEnvoyIngress(r.KafkaCluster.GetName(), extListener.Name),
-			r.KafkaCluster.Spec.EnvoyConfig.GetAnnotations(),
+			envoyConfig.GetAnnotations(),
 			r.KafkaCluster),
 		Spec: appsv1.DeploymentSpec{
 			Selector: &metav1.LabelSelector{
 				MatchLabels: labelsForEnvoyIngress(r.KafkaCluster.GetName(), extListener.Name),
 			},
-			Replicas: util.Int32Pointer(r.KafkaCluster.Spec.EnvoyConfig.GetReplicas()),
+			Replicas: util.Int32Pointer(envoyConfig.GetReplicas()),
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels:      labelsForEnvoyIngress(r.KafkaCluster.GetName(), extListener.Name),
 					Annotations: generatePodAnnotations(r.KafkaCluster, extListener, log),
 				},
 				Spec: corev1.PodSpec{
-					ServiceAccountName: r.KafkaCluster.Spec.EnvoyConfig.GetServiceAccount(),
-					ImagePullSecrets:   r.KafkaCluster.Spec.EnvoyConfig.GetImagePullSecrets(),
-					Tolerations:        r.KafkaCluster.Spec.EnvoyConfig.GetTolerations(),
-					NodeSelector:       r.KafkaCluster.Spec.EnvoyConfig.GetNodeSelector(),
+					ServiceAccountName: envoyConfig.GetServiceAccount(),
+					ImagePullSecrets:   envoyConfig.GetImagePullSecrets(),
+					Tolerations:        envoyConfig.GetTolerations(),
+					NodeSelector:       envoyConfig.GetNodeSelector(),
 					Containers: []corev1.Container{
 						{
 							Name:  "envoy",
-							Image: r.KafkaCluster.Spec.EnvoyConfig.GetEnvoyImage(),
+							Image: envoyConfig.GetEnvoyImage(),
 							Ports: append(exposedPorts, []corev1.ContainerPort{
 								{Name: "envoy-admin", ContainerPort: 9901, Protocol: corev1.ProtocolTCP}}...),
 							VolumeMounts: volumeMounts,
-							Resources:    *r.KafkaCluster.Spec.EnvoyConfig.GetResources(),
+							Resources:    *envoyConfig.GetResources(),
 						},
 					},
 					Volumes: volumes,

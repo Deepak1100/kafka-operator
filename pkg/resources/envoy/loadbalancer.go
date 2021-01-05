@@ -31,7 +31,8 @@ import (
 )
 
 // loadBalancer return a Loadbalancer service for Envoy
-func (r *Reconciler) loadBalancer(log logr.Logger, extListener v1beta1.ExternalListenerConfig) runtime.Object {
+func (r *Reconciler) loadBalancer(log logr.Logger, extListener v1beta1.ExternalListenerConfig,
+	envoyConfig v1beta1.EnvoyConfig) runtime.Object {
 
 	exposedPorts := getExposedServicePorts(extListener,
 		util.GetBrokerIdsFromStatusAndSpec(r.KafkaCluster.Status.BrokersState, r.KafkaCluster.Spec.Brokers, log))
@@ -45,8 +46,8 @@ func (r *Reconciler) loadBalancer(log logr.Logger, extListener v1beta1.ExternalL
 			Selector:                 labelsForEnvoyIngress(r.KafkaCluster.GetName(), extListener.Name),
 			Type:                     corev1.ServiceTypeLoadBalancer,
 			Ports:                    exposedPorts,
-			LoadBalancerSourceRanges: r.KafkaCluster.Spec.EnvoyConfig.GetLoadBalancerSourceRanges(),
-			LoadBalancerIP:           r.KafkaCluster.Spec.EnvoyConfig.LoadBalancerIP,
+			LoadBalancerSourceRanges: envoyConfig.GetLoadBalancerSourceRanges(),
+			LoadBalancerIP:           envoyConfig.LoadBalancerIP,
 			ExternalTrafficPolicy:    extListener.ExternalTrafficPolicy,
 		},
 	}

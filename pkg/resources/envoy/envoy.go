@@ -64,12 +64,21 @@ func (r *Reconciler) Reconcile(log logr.Logger) error {
 
 		for _, eListener := range r.KafkaCluster.Spec.ListenersConfig.ExternalListeners {
 			if eListener.GetAccessMethod() == corev1.ServiceTypeLoadBalancer {
-				for _, res := range []resources.ResourceWithLogAndExternalListenerConfig{
+
+				// Prefer specific external listener configuration but fall back to global one if none specified
+				var envoyConfig v1beta1.EnvoyConfig
+				if eListener.Config != nil && eListener.Config.EnvoyConfig != nil {
+					envoyConfig = *eListener.Config.EnvoyConfig
+				} else {
+					envoyConfig = r.KafkaCluster.Spec.EnvoyConfig
+				}
+
+				for _, res := range []resources.ResourceWithLogAndExternalListenerConfigAndEnvoyConfig{
 					r.loadBalancer,
 					r.configMap,
 					r.deployment,
 				} {
-					o := res(log, eListener)
+					o := res(log, eListener, envoyConfig)
 					err := k8sutil.Reconcile(log, r.Client, o, r.KafkaCluster)
 					if err != nil {
 						return err

@@ -36,7 +36,8 @@ import (
 	kafkautils "github.com/banzaicloud/kafka-operator/pkg/util/kafka"
 )
 
-func (r *Reconciler) configMap(log logr.Logger, extListener v1beta1.ExternalListenerConfig) runtime.Object {
+func (r *Reconciler) configMap(log logr.Logger, extListener v1beta1.ExternalListenerConfig,
+	_ v1beta1.EnvoyConfig) runtime.Object {
 	configMap := &corev1.ConfigMap{
 		ObjectMeta: templates.ObjectMeta(
 			fmt.Sprintf(envoyVolumeAndConfigName, extListener.Name, r.KafkaCluster.GetName()),

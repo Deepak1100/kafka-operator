@@ -199,29 +199,29 @@ type EnvoyConfig struct {
 	Image     string                       `json:"image,omitempty"`
 	Resources *corev1.ResourceRequirements `json:"resourceRequirements,omitempty"`
 	// +kubebuilder:validation:Minimum=1
-	Replicas                 int32                         `json:"replicas,omitempty"`
-	ServiceAccountName       string                        `json:"serviceAccountName,omitempty"`
-	ImagePullSecrets         []corev1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
-	NodeSelector             map[string]string             `json:"nodeSelector,omitempty"`
-	Tolerations              []corev1.Toleration           `json:"tolerations,omitempty"`
+	Replicas           int32                         `json:"replicas,omitempty"`
+	ServiceAccountName string                        `json:"serviceAccountName,omitempty"`
+	ImagePullSecrets   []corev1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
+	NodeSelector       map[string]string             `json:"nodeSelector,omitempty"`
+	Tolerations        []corev1.Toleration           `json:"tolerations,omitempty"`
 	// Annotations defines the annotations placed on the envoy ingress controller deployment
-	Annotations              map[string]string             `json:"annotations,omitempty"`
-	LoadBalancerSourceRanges []string                      `json:"loadBalancerSourceRanges,omitempty"`
+	Annotations              map[string]string `json:"annotations,omitempty"`
+	LoadBalancerSourceRanges []string          `json:"loadBalancerSourceRanges,omitempty"`
 	// LoadBalancerIP can be used to specify an exact IP for the LoadBalancer service
 	LoadBalancerIP string `json:"loadBalancerIP,omitempty"`
 }
 
 // IstioIngressConfig defines the config for the Istio Ingress Controller
 type IstioIngressConfig struct {
-	Resources                 *corev1.ResourceRequirements `json:"resourceRequirements,omitempty"`
+	Resources *corev1.ResourceRequirements `json:"resourceRequirements,omitempty"`
 	// +kubebuilder:validation:Minimum=1
-	Replicas                  int32                        `json:"replicas,omitempty"`
-	NodeSelector              map[string]string            `json:"nodeSelector,omitempty"`
-	Tolerations               []corev1.Toleration          `json:"tolerations,omitempty"`
+	Replicas     int32               `json:"replicas,omitempty"`
+	NodeSelector map[string]string   `json:"nodeSelector,omitempty"`
+	Tolerations  []corev1.Toleration `json:"tolerations,omitempty"`
 	// Annotations defines the annotations placed on the istio ingress controller deployment
-	Annotations               map[string]string            `json:"annotations,omitempty"`
-	TLSOptions                *v1alpha3.TLSOptions         `json:"gatewayConfig,omitempty"`
-	VirtualServiceAnnotations map[string]string            `json:"virtualServiceAnnotations,omitempty"`
+	Annotations               map[string]string    `json:"annotations,omitempty"`
+	TLSOptions                *v1alpha3.TLSOptions `json:"gatewayConfig,omitempty"`
+	VirtualServiceAnnotations map[string]string    `json:"virtualServiceAnnotations,omitempty"`
 }
 
 // GetVirtualServiceAnnotations returns a copy of the VirtualServiceAnnotations field
@@ -339,7 +339,7 @@ type ExternalListenerConfig struct {
 	// advertise the listener using a URL recorded in DNS instead of public IP).
 	// In case of external listeners using NodePort access method the broker instead of node public IP (see "brokerConfig.nodePortExternalIP")
 	// is advertised on the address having the following format: <kafka-cluster-name>-<broker-id>.<namespace><value-specified-in-hostnameOverride-field>
-	HostnameOverride   string            `json:"hostnameOverride,omitempty"`
+	HostnameOverride string `json:"hostnameOverride,omitempty"`
 	// ServiceAnnotations defines annotations which will
 	// be placed to the service or services created for the external listener
 	ServiceAnnotations map[string]string `json:"serviceAnnotations,omitempty"`
@@ -361,13 +361,13 @@ type ExternalListenerConfig struct {
 	ExternalTrafficPolicy corev1.ServiceExternalTrafficPolicyType `json:"externalTrafficPolicy,omitempty"`
 	// configuring Config allows to specify different ingress controller configuration per external listener
 	// if not set the default IstioIngressConfig or EnvoyConfig will be used from the KafkaClusterSpec
-	Config Config `json:"config,omitempty"`
+	Config *Config `json:"config,omitempty"`
 }
 
 // Config defines the external access ingress controller configuration
 type Config struct {
-	IstioIngressConfig IstioIngressConfig  `json:"istioIngressConfig,omitempty"`
-	EnvoyConfig        EnvoyConfig         `json:"envoyConfig,omitempty"`
+	IstioIngressConfig *IstioIngressConfig `json:"istioIngressConfig,omitempty"`
+	EnvoyConfig        *EnvoyConfig        `json:"envoyConfig,omitempty"`
 }
 
 // InternalListenerConfig defines the internal listener config for Kafka
