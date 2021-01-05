@@ -58,9 +58,11 @@ func (r *Reconciler) deployment(log logr.Logger, extListener v1beta1.ExternalLis
 	}
 
 	return &appsv1.Deployment{
-		ObjectMeta: templates.ObjectMeta(
+		ObjectMeta: templates.ObjectMetaWithAnnotations(
 			fmt.Sprintf(envoyDeploymentName, extListener.Name, r.KafkaCluster.GetName()),
-			labelsForEnvoyIngress(r.KafkaCluster.GetName(), extListener.Name), r.KafkaCluster),
+			labelsForEnvoyIngress(r.KafkaCluster.GetName(), extListener.Name),
+			r.KafkaCluster.Spec.EnvoyConfig.GetAnnotations(),
+			r.KafkaCluster),
 		Spec: appsv1.DeploymentSpec{
 			Selector: &metav1.LabelSelector{
 				MatchLabels: labelsForEnvoyIngress(r.KafkaCluster.GetName(), extListener.Name),
