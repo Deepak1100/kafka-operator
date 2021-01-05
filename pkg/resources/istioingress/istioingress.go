@@ -59,14 +59,23 @@ func (r *Reconciler) Reconcile(log logr.Logger) error {
 	log.V(1).Info("Reconciling")
 	if r.KafkaCluster.Spec.ListenersConfig.ExternalListeners != nil && r.KafkaCluster.Spec.GetIngressController() == istioingress.IngressControllerName {
 
-		for _, externalListenerConfig := range r.KafkaCluster.Spec.ListenersConfig.ExternalListeners {
-			if externalListenerConfig.GetAccessMethod() == corev1.ServiceTypeLoadBalancer {
-				for _, res := range []resources.ResourceWithLogAndExternalListenerConfig{
+		for _, eListener := range r.KafkaCluster.Spec.ListenersConfig.ExternalListeners {
+			if eListener.GetAccessMethod() == corev1.ServiceTypeLoadBalancer {
+
+				// Prefer specific external listener configuration but fall back to global one if none specified
+				var istioIngressConfig v1beta1.IstioIngressConfig
+				if eListener.Config != nil && eListener.Config.IstioIngressConfig != nil {
+					istioIngressConfig = *eListener.Config.IstioIngressConfig
+				} else {
+					istioIngressConfig = r.KafkaCluster.Spec.IstioIngressConfig
+				}
+
+				for _, res := range []resources.ResourceWithLogAndExternalListenerConfigAndIstioIngressConfig{
 					r.meshgateway,
 					r.gateway,
 					r.virtualService,
 				} {
-					o := res(log, externalListenerConfig)
+					o := res(log, eListener, istioIngressConfig)
 					err := k8sutil.Reconcile(log, r.Client, o, r.KafkaCluster)
 					if err != nil {
 						return err

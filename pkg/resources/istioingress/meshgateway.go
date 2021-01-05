@@ -30,7 +30,8 @@ import (
 	kafkautils "github.com/banzaicloud/kafka-operator/pkg/util/kafka"
 )
 
-func (r *Reconciler) meshgateway(log logr.Logger, externalListenerConfig v1beta1.ExternalListenerConfig) runtime.Object {
+func (r *Reconciler) meshgateway(log logr.Logger, externalListenerConfig v1beta1.ExternalListenerConfig,
+	istioIngressConfig v1beta1.IstioIngressConfig) runtime.Object {
 	mgateway := &istioOperatorApi.MeshGateway{
 		ObjectMeta: templates.ObjectMeta(
 			fmt.Sprintf(istioingressutils.MeshGatewayNameTemplate, externalListenerConfig.Name, r.KafkaCluster.Name),
@@ -40,14 +41,14 @@ func (r *Reconciler) meshgateway(log logr.Logger, externalListenerConfig v1beta1
 				Labels:             labelsForIstioIngress(r.KafkaCluster.Name, externalListenerConfig.Name),
 				ServiceAnnotations: externalListenerConfig.GetServiceAnnotations(),
 				BaseK8sResourceConfigurationWithHPAWithoutImage: istioOperatorApi.BaseK8sResourceConfigurationWithHPAWithoutImage{
-					ReplicaCount: util.Int32Pointer(r.KafkaCluster.Spec.IstioIngressConfig.GetReplicas()),
-					MinReplicas:  util.Int32Pointer(r.KafkaCluster.Spec.IstioIngressConfig.GetReplicas()),
-					MaxReplicas:  util.Int32Pointer(r.KafkaCluster.Spec.IstioIngressConfig.GetReplicas()),
+					ReplicaCount: util.Int32Pointer(istioIngressConfig.GetReplicas()),
+					MinReplicas:  util.Int32Pointer(istioIngressConfig.GetReplicas()),
+					MaxReplicas:  util.Int32Pointer(istioIngressConfig.GetReplicas()),
 					BaseK8sResourceConfiguration: istioOperatorApi.BaseK8sResourceConfiguration{
-						Resources:      r.KafkaCluster.Spec.IstioIngressConfig.GetResources(),
-						NodeSelector:   r.KafkaCluster.Spec.IstioIngressConfig.NodeSelector,
-						Tolerations:    r.KafkaCluster.Spec.IstioIngressConfig.Tolerations,
-						PodAnnotations: r.KafkaCluster.Spec.IstioIngressConfig.Annotations,
+						Resources:      istioIngressConfig.GetResources(),
+						NodeSelector:   istioIngressConfig.NodeSelector,
+						Tolerations:    istioIngressConfig.Tolerations,
+						PodAnnotations: istioIngressConfig.Annotations,
 					},
 				},
 				ServiceType: corev1.ServiceTypeLoadBalancer,

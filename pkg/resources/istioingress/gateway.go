@@ -27,7 +27,8 @@ import (
 	kafkautil "github.com/banzaicloud/kafka-operator/pkg/util/kafka"
 )
 
-func (r *Reconciler) gateway(log logr.Logger, externalListenerConfig v1beta1.ExternalListenerConfig) runtime.Object {
+func (r *Reconciler) gateway(log logr.Logger, externalListenerConfig v1beta1.ExternalListenerConfig,
+	_ v1beta1.IstioIngressConfig) runtime.Object {
 	return &v1alpha3.Gateway{
 		ObjectMeta: templates.ObjectMeta(fmt.Sprintf(gatewayNameTemplate, r.KafkaCluster.Name, externalListenerConfig.Name), labelsForIstioIngress(r.KafkaCluster.Name, externalListenerConfig.Name), r.KafkaCluster),
 		Spec: v1alpha3.GatewaySpec{

@@ -27,14 +27,15 @@ import (
 	kafkautils "github.com/banzaicloud/kafka-operator/pkg/util/kafka"
 )
 
-func (r *Reconciler) virtualService(log logr.Logger, externalListenerConfig v1beta1.ExternalListenerConfig) runtime.Object {
+func (r *Reconciler) virtualService(log logr.Logger, externalListenerConfig v1beta1.ExternalListenerConfig,
+	istioIngressConfig v1beta1.IstioIngressConfig) runtime.Object {
 	vServiceSpec := v1alpha3.VirtualServiceSpec{
 		Hosts:    []string{"*"},
 		Gateways: []string{fmt.Sprintf(gatewayNameTemplate, r.KafkaCluster.Name, externalListenerConfig.Name)},
 	}
 
-	if r.KafkaCluster.Spec.IstioIngressConfig.TLSOptions != nil &&
-		r.KafkaCluster.Spec.IstioIngressConfig.TLSOptions.Mode == v1alpha3.TLSModePassThrough {
+	if istioIngressConfig.TLSOptions != nil &&
+		istioIngressConfig.TLSOptions.Mode == v1alpha3.TLSModePassThrough {
 		vServiceSpec.TLS = generateTlsRoutes(r.KafkaCluster, externalListenerConfig, log)
 
 	} else {
@@ -45,7 +46,7 @@ func (r *Reconciler) virtualService(log logr.Logger, externalListenerConfig v1be
 		ObjectMeta: templates.ObjectMetaWithAnnotations(
 			fmt.Sprintf(virtualServiceTemplate, r.KafkaCluster.Name, externalListenerConfig.Name),
 			labelsForIstioIngress(r.KafkaCluster.Name, externalListenerConfig.Name),
-			r.KafkaCluster.Spec.IstioIngressConfig.GetVirtualServiceAnnotations(),
+			istioIngressConfig.GetVirtualServiceAnnotations(),
 			r.KafkaCluster),
 		Spec: vServiceSpec,
 	}
