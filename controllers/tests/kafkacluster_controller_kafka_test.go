@@ -33,13 +33,13 @@ import (
 	"github.com/banzaicloud/kafka-operator/pkg/util"
 )
 
-func expectKafka(kafkaCluster *v1beta1.KafkaCluster) {
+func expectKafka(kafkaCluster *v1beta1.KafkaCluster, randomGenTestNumber uint64) {
 	expectKafkaAllBrokerService(kafkaCluster)
 	expectKafkaPDB(kafkaCluster)
 	expectKafkaPVC(kafkaCluster)
 
 	for _, broker := range kafkaCluster.Spec.Brokers {
-		expectKafkaBrokerConfigmap(kafkaCluster, broker)
+		expectKafkaBrokerConfigmap(kafkaCluster, broker, randomGenTestNumber)
 		expectKafkaBrokerService(kafkaCluster, broker)
 		expectKafkaBrokerPod(kafkaCluster, broker)
 	}
@@ -149,7 +149,7 @@ func expectKafkaPVC(kafkaCluster *v1beta1.KafkaCluster) {
 	}
 }
 
-func expectKafkaBrokerConfigmap(kafkaCluster *v1beta1.KafkaCluster, broker v1beta1.Broker) {
+func expectKafkaBrokerConfigmap(kafkaCluster *v1beta1.KafkaCluster, broker v1beta1.Broker, randomGenTestNumber uint64) {
 	configMap := corev1.ConfigMap{}
 	Eventually(func() error {
 		return k8sClient.Get(context.Background(), types.NamespacedName{
@@ -162,7 +162,7 @@ func expectKafkaBrokerConfigmap(kafkaCluster *v1beta1.KafkaCluster, broker v1bet
 	Expect(configMap.Labels).To(HaveKeyWithValue("kafka_cr", kafkaCluster.Name))
 	Expect(configMap.Labels).To(HaveKeyWithValue("brokerId", strconv.Itoa(int(broker.Id))))
 
-	Expect(configMap.Data).To(HaveKeyWithValue("broker-config", fmt.Sprintf(`advertised.listeners=CONTROLLER://kafkacluster-1-%d.kafka-1.svc.cluster.local:29093,INTERNAL://kafkacluster-1-%d.kafka-1.svc.cluster.local:29092,TEST://test.host.com:%d
+	Expect(configMap.Data).To(HaveKeyWithValue("broker-config", fmt.Sprintf(`advertised.listeners=CONTROLLER://kafkacluster-%d-%d.kafka-%d.svc.cluster.local:29093,INTERNAL://kafkacluster-%d-%d.kafka-%d.svc.cluster.local:29092,TEST://test.host.com:%d
 broker.id=%d
 control.plane.listener.name=CONTROLLER
 cruise.control.metrics.reporter.bootstrap.servers=INTERNAL://kafkacluster-1-%d.kafka-1.svc.cluster.local:29092
@@ -172,7 +172,7 @@ listener.security.protocol.map=INTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT,TEST:PLAI
 listeners=INTERNAL://:29092,CONTROLLER://:29093,TEST://:9094
 log.dirs=/kafka-logs/kafka
 metric.reporters=com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsReporter
-zookeeper.connect=/`, broker.Id, broker.Id, 19090+broker.Id, broker.Id, broker.Id)))
+zookeeper.connect=/`, randomGenTestNumber, broker.Id, randomGenTestNumber, randomGenTestNumber, broker.Id, randomGenTestNumber, 19090+broker.Id, broker.Id, broker.Id)))
 
 	// assert log4j?
 }

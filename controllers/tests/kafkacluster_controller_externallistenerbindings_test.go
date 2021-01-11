@@ -29,7 +29,7 @@ import (
 	"github.com/banzaicloud/kafka-operator/api/v1beta1"
 )
 
-func expectEmptyExternalListenerBindings(kafkaCluster *v1beta1.KafkaCluster) {
+func expectEmptyExternalListenerBindings(kafkaCluster *v1beta1.KafkaCluster, randomGenTestNumber uint64) {
 	expectAllBrokerServiceWithTwoEListeners(kafkaCluster)
 
 	for _, broker := range kafkaCluster.Spec.Brokers {
@@ -46,7 +46,7 @@ func expectEmptyExternalListenerBindings(kafkaCluster *v1beta1.KafkaCluster) {
 		Expect(configMap.Labels).To(HaveKeyWithValue("kafka_cr", kafkaCluster.Name))
 		Expect(configMap.Labels).To(HaveKeyWithValue("brokerId", strconv.Itoa(int(broker.Id))))
 
-		Expect(configMap.Data).To(HaveKeyWithValue("broker-config", fmt.Sprintf(`advertised.listeners=CONTROLLER://kafkacluster-2-%d.kafka-2.svc.cluster.local:29093,EXTERNAL://external.host.com:%d,INTERNAL://kafkacluster-2-%d.kafka-2.svc.cluster.local:29092,TEST://test.host.com:%d
+		Expect(configMap.Data).To(HaveKeyWithValue("broker-config", fmt.Sprintf(`advertised.listeners=CONTROLLER://kafkacluster-%d-%d.kafka-%d.svc.cluster.local:29093,EXTERNAL://external.host.com:%d,INTERNAL://kafkacluster-%d-%d.kafka-%d.svc.cluster.local:29092,TEST://test.host.com:%d
 broker.id=%d
 control.plane.listener.name=CONTROLLER
 cruise.control.metrics.reporter.bootstrap.servers=INTERNAL://kafkacluster-2-%d.kafka-2.svc.cluster.local:29092
@@ -56,7 +56,7 @@ listener.security.protocol.map=INTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT,TEST:PLAI
 listeners=INTERNAL://:29092,CONTROLLER://:29093,TEST://:9094,EXTERNAL://:9095
 log.dirs=/kafka-logs/kafka
 metric.reporters=com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsReporter
-zookeeper.connect=/`, broker.Id, 19095+broker.Id, broker.Id, 19090+broker.Id, broker.Id, broker.Id)))
+zookeeper.connect=/`, randomGenTestNumber, broker.Id,randomGenTestNumber, 19095+broker.Id, randomGenTestNumber, broker.Id, randomGenTestNumber, 19090+broker.Id, broker.Id, broker.Id)))
 		// check service
 		service := corev1.Service{}
 		Eventually(func() error {
@@ -119,7 +119,7 @@ zookeeper.connect=/`, broker.Id, 19095+broker.Id, broker.Id, 19090+broker.Id, br
 
 }
 
-func expectExternalListenerBindings(kafkaCluster *v1beta1.KafkaCluster, clusterId uint64) {
+func expectExternalListenerBindings(kafkaCluster *v1beta1.KafkaCluster, randomGenTestNumber uint64) {
 	expectAllBrokerServiceWithTwoEListeners(kafkaCluster)
 	broker := kafkaCluster.Spec.Brokers[0]
 	// expect ConfigMap
@@ -145,7 +145,7 @@ listener.security.protocol.map=INTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT,EXTERNAL:
 listeners=INTERNAL://:29092,CONTROLLER://:29093,EXTERNAL://:9095
 log.dirs=/kafka-logs/kafka
 metric.reporters=com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsReporter
-zookeeper.connect=/`, clusterId, broker.Id, clusterId, 19095+broker.Id, clusterId, broker.Id, clusterId, broker.Id, clusterId, broker.Id, clusterId)))
+zookeeper.connect=/`, randomGenTestNumber, broker.Id, randomGenTestNumber, 19095+broker.Id, randomGenTestNumber, broker.Id, randomGenTestNumber, broker.Id, randomGenTestNumber, broker.Id, randomGenTestNumber)))
 	// check service
 	service := corev1.Service{}
 	Eventually(func() error {
@@ -223,7 +223,7 @@ listener.security.protocol.map=INTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT,TEST:PLAI
 listeners=INTERNAL://:29092,CONTROLLER://:29093,TEST://:9094
 log.dirs=/kafka-logs/kafka
 metric.reporters=com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsReporter
-zookeeper.connect=/`, clusterId, broker.Id, clusterId, clusterId, broker.Id, clusterId, 19090+broker.Id, broker.Id, clusterId, broker.Id, clusterId)))
+zookeeper.connect=/`, randomGenTestNumber, broker.Id, randomGenTestNumber, randomGenTestNumber, broker.Id, randomGenTestNumber, 19090+broker.Id, broker.Id, randomGenTestNumber, broker.Id, randomGenTestNumber)))
 	// check service
 	service = corev1.Service{}
 	Eventually(func() error {
@@ -279,7 +279,7 @@ zookeeper.connect=/`, clusterId, broker.Id, clusterId, clusterId, broker.Id, clu
 
 }
 
-func expectExternalListenerGroupBindings(kafkaCluster *v1beta1.KafkaCluster) {
+func expectExternalListenerGroupBindings(kafkaCluster *v1beta1.KafkaCluster, randomGenTestNumber uint64) {
 	expectAllBrokerServiceWithTwoEListeners(kafkaCluster)
 	for _, broker := range kafkaCluster.Spec.Brokers {
 		// expect ConfigMap
@@ -295,7 +295,7 @@ func expectExternalListenerGroupBindings(kafkaCluster *v1beta1.KafkaCluster) {
 		Expect(configMap.Labels).To(HaveKeyWithValue("kafka_cr", kafkaCluster.Name))
 		Expect(configMap.Labels).To(HaveKeyWithValue("brokerId", strconv.Itoa(int(broker.Id))))
 
-		Expect(configMap.Data).To(HaveKeyWithValue("broker-config", fmt.Sprintf(`advertised.listeners=CONTROLLER://kafkacluster-3-%d.kafka-3.svc.cluster.local:29093,INTERNAL://kafkacluster-3-%d.kafka-3.svc.cluster.local:29092,TEST://test.host.com:%d
+		Expect(configMap.Data).To(HaveKeyWithValue("broker-config", fmt.Sprintf(`advertised.listeners=CONTROLLER://kafkacluster-%d-%d.kafka-%d.svc.cluster.local:29093,INTERNAL://kafkacluster-%d-%d.kafka-%d.svc.cluster.local:29092,TEST://test.host.com:%d
 broker.id=%d
 control.plane.listener.name=CONTROLLER
 cruise.control.metrics.reporter.bootstrap.servers=INTERNAL://kafkacluster-3-%d.kafka-3.svc.cluster.local:29092
@@ -305,7 +305,7 @@ listener.security.protocol.map=INTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT,TEST:PLAI
 listeners=INTERNAL://:29092,CONTROLLER://:29093,TEST://:9094
 log.dirs=/kafka-logs/kafka
 metric.reporters=com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsReporter
-zookeeper.connect=/`, broker.Id, broker.Id, 19090+broker.Id, broker.Id, broker.Id)))
+zookeeper.connect=/`, randomGenTestNumber, broker.Id, randomGenTestNumber, randomGenTestNumber, broker.Id,randomGenTestNumber, 19090+broker.Id, broker.Id, broker.Id)))
 		// check service
 		service := corev1.Service{}
 		Eventually(func() error {

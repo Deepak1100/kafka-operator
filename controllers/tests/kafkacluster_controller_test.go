@@ -122,7 +122,7 @@ var _ = Describe("KafkaCluster", func() {
 			expectEnvoy(kafkaCluster)
 			expectKafkaMonitoring(kafkaCluster)
 			expectCruiseControlMonitoring(kafkaCluster)
-			expectKafka(kafkaCluster)
+			expectKafka(kafkaCluster, count)
 			expectCruiseControl(kafkaCluster)
 		})
 	})
@@ -161,7 +161,7 @@ var _ = Describe("KafkaCluster", func() {
 		})
 		When("using empty external listener bindings", func() {
 			It("should handle reconciles objects properly", func() {
-				expectEmptyExternalListenerBindings(kafkaCluster)
+				expectEmptyExternalListenerBindings(kafkaCluster, count)
 			})
 		})
 		When("using external listener bindings from broker group config", func() {
@@ -171,7 +171,7 @@ var _ = Describe("KafkaCluster", func() {
 				kafkaCluster.Spec.BrokerConfigGroups["default"] = defaultBConfigGroup
 			})
 			It("should handle object reconcile properly", func() {
-				expectExternalListenerGroupBindings(kafkaCluster)
+				expectExternalListenerGroupBindings(kafkaCluster, count)
 			})
 		})
 		When("using external listener binding list from direct broker config", func() {
