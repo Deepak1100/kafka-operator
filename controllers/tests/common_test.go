@@ -19,7 +19,6 @@ import (
 	"time"
 
 	. "github.com/onsi/gomega"
-
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -44,6 +43,7 @@ func createMinimalKafkaClusterCR(name, namespace string) *v1beta1.KafkaCluster {
 						CommonListenerSpec: v1beta1.CommonListenerSpec{
 							Name:          "test",
 							ContainerPort: 9094,
+							Type:          "plaintext",
 						},
 						ExternalStartingPort: 19090,
 						HostnameOverride:     "test-host",
@@ -144,7 +144,7 @@ func waitForClusterRunningState(kafkaCluster *v1beta1.KafkaCluster, namespace st
 		}
 	}()
 
-	Eventually(ch, 5*time.Second, 50*time.Millisecond).Should(Receive())
+	Eventually(ch, 40*time.Second, 50*time.Millisecond).Should(Receive())
 }
 
 func getMockedKafkaClientForCluster(kafkaCluster *v1beta1.KafkaCluster) kafkaclient.KafkaClient {

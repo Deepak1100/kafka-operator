@@ -40,10 +40,10 @@ func (r *Reconciler) headlessService() runtime.Object {
 	}
 
 	//Append external listener ports as well to allow using this service for metadata fetch
-	for _, eListeners := range r.KafkaCluster.Spec.ListenersConfig.ExternalListeners {
+	for _, eListener := range r.KafkaCluster.Spec.ListenersConfig.ExternalListeners {
 		usedPorts = append(usedPorts, corev1.ServicePort{
-			Name:     strings.ReplaceAll(eListeners.GetListenerServiceName(), "_", ""),
-			Port:     eListeners.ContainerPort,
+			Name:     strings.ReplaceAll(eListener.GetListenerServiceName(), "_", ""),
+			Port:     eListener.ContainerPort,
 			Protocol: corev1.ProtocolTCP,
 		})
 	}

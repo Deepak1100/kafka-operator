@@ -25,7 +25,6 @@ import (
 	"emperror.dev/errors"
 	"github.com/banzaicloud/k8s-objectmatcher/patch"
 	"github.com/go-logr/logr"
-
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -110,7 +109,7 @@ func getCreatedPvcForBroker(c client.Client, brokerID int32, namespace, crName s
 
 func getLoadBalancerIP(foundLBService *corev1.Service) (string, error) {
 	if len(foundLBService.Status.LoadBalancer.Ingress) == 0 {
-		return "", errorfactory.New(errorfactory.ResourceNotReady{}, errors.New("loadbalancer is not created waiting"), "trying")
+		return "", errorfactory.New(errorfactory.ResourceNotReady{}, errors.New("loadbalancer ingress is not created waiting"), "trying")
 	}
 
 	if foundLBService.Status.LoadBalancer.Ingress[0].Hostname == "" && foundLBService.Status.LoadBalancer.Ingress[0].IP == "" {
@@ -258,7 +257,7 @@ func (r *Reconciler) Reconcile(log logr.Logger) error {
 		}
 
 		if !r.KafkaCluster.Spec.HeadlessServiceEnabled {
-			o := r.service(broker.Id, log)
+			o := r.service(broker.Id, brokerConfig)
 			err := k8sutil.Reconcile(log, r.Client, o, r.KafkaCluster)
 			if err != nil {
 				return errors.WrapIfWithDetails(err, "failed to reconcile resource", "resource", o.GetObjectKind().GroupVersionKind())
@@ -791,48 +790,72 @@ func (r *Reconciler) createExternalListenerStatuses() (map[string]v1beta1.Listen
 		var host string
 		var foundLBService *corev1.Service
 		var err error
-
-		if eListener.HostnameOverride != "" {
-			host = eListener.HostnameOverride
-		} else if eListener.GetAccessMethod() == corev1.ServiceTypeLoadBalancer {
-			foundLBService, err = getServiceFromExternalListener(r.Client, r.KafkaCluster, eListener.Name)
-			if err != nil {
-				return nil, errors.WrapIfWithDetails(err, "could not get service corresponding to the external listener", "externalListenerName", eListener.Name)
-			}
-			lbIP, err := getLoadBalancerIP(foundLBService)
-			if err != nil {
-				return nil, errors.WrapIfWithDetails(err, "could not extract IP from LoadBalancer service", "externalListenerName", eListener.Name)
-			}
-			host = lbIP
-		}
+		generateAllBrokerAccess := false
 		listenerStatusList := make(v1beta1.ListenerStatusList, 0, len(r.KafkaCluster.Spec.Brokers)+1)
 
-		// optionally add all brokers service to the top of the list
-		if eListener.GetAccessMethod() != corev1.ServiceTypeNodePort {
-			if foundLBService == nil {
+		for _, broker := range r.KafkaCluster.Spec.Brokers {
+			brokerConfig, err := util.GetBrokerConfig(broker, r.KafkaCluster.Spec)
+			if err != nil {
+				return nil, errors.WrapIfWithDetails(err, "could not get broker configuration", "brokerId", broker.Id)
+			}
+			if util.StringSliceContains(brokerConfig.ExternalListenerBindings, eListener.Name) ||
+				len(brokerConfig.ExternalListenerBindings) == 0 {
+				generateAllBrokerAccess = true
+				break
+			}
+		}
+		if generateAllBrokerAccess {
+			if eListener.HostnameOverride != "" {
+				host = eListener.HostnameOverride
+			} else if eListener.GetAccessMethod() == corev1.ServiceTypeLoadBalancer {
 				foundLBService, err = getServiceFromExternalListener(r.Client, r.KafkaCluster, eListener.Name)
 				if err != nil {
 					return nil, errors.WrapIfWithDetails(err, "could not get service corresponding to the external listener", "externalListenerName", eListener.Name)
 				}
-			}
-			var allBrokerPort int32 = 0
-			for _, port := range foundLBService.Spec.Ports {
-				if port.Name == "tcp-all-broker" {
-					allBrokerPort = port.Port
-					break
+				lbIP, err := getLoadBalancerIP(foundLBService)
+				if err != nil {
+					return nil, errors.WrapIfWithDetails(err, "could not extract IP from LoadBalancer service", "externalListenerName", eListener.Name)
 				}
+				host = lbIP
 			}
-			if allBrokerPort == 0 {
-				return nil, errors.NewWithDetails("could not find port with name tcp-all-broker", "externalListenerName", eListener.Name)
+
+			// optionally add all brokers service to the top of the list
+			if eListener.GetAccessMethod() != corev1.ServiceTypeNodePort {
+				if foundLBService == nil {
+					foundLBService, err = getServiceFromExternalListener(r.Client, r.KafkaCluster, eListener.Name)
+					if err != nil {
+						return nil, errors.WrapIfWithDetails(err, "could not get service corresponding to the external listener", "externalListenerName", eListener.Name)
+					}
+				}
+				var allBrokerPort int32 = 0
+				for _, port := range foundLBService.Spec.Ports {
+					if port.Name == "tcp-all-broker" {
+						allBrokerPort = port.Port
+						break
+					}
+				}
+				if allBrokerPort == 0 {
+					return nil, errors.NewWithDetails("could not find port with name tcp-all-broker", "externalListenerName", eListener.Name)
+				}
+				listenerStatus := v1beta1.ListenerStatus{
+					Name:    "any-broker",
+					Address: fmt.Sprintf("%s:%d", host, allBrokerPort),
+				}
+				listenerStatusList = append(listenerStatusList, listenerStatus)
 			}
-			listenerStatus := v1beta1.ListenerStatus{
-				Name:    "any-broker",
-				Address: fmt.Sprintf("%s:%d", host, allBrokerPort),
-			}
-			listenerStatusList = append(listenerStatusList, listenerStatus)
 		}
 
 		for _, broker := range r.KafkaCluster.Spec.Brokers {
+
+			brokerConfig, err := util.GetBrokerConfig(broker, r.KafkaCluster.Spec)
+			if err != nil {
+				return nil, errors.WrapIfWithDetails(err, "could not get broker configuration", "brokerId", broker.Id)
+			}
+			if !util.StringSliceContains(brokerConfig.ExternalListenerBindings, eListener.Name) &&
+				len(brokerConfig.ExternalListenerBindings) != 0 {
+				continue
+			}
+
 			brokerHost := host
 			portNumber := eListener.ExternalStartingPort + broker.Id
 
@@ -861,8 +884,9 @@ func (r *Reconciler) createExternalListenerStatuses() (map[string]v1beta1.Listen
 			}
 			listenerStatusList = append(listenerStatusList, listenerStatus)
 		}
-
-		extListenerStatuses[eListener.Name] = listenerStatusList
+		if len(listenerStatusList) > 0 {
+			extListenerStatuses[eListener.Name] = listenerStatusList
+		}
 	}
 	return extListenerStatuses, nil
 }

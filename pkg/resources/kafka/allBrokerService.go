@@ -30,19 +30,19 @@ func (r *Reconciler) allBrokerService() runtime.Object {
 
 	var usedPorts []corev1.ServicePort
 
-	for _, iListeners := range r.KafkaCluster.Spec.ListenersConfig.InternalListeners {
+	for _, iListener := range r.KafkaCluster.Spec.ListenersConfig.InternalListeners {
 		usedPorts = append(usedPorts, corev1.ServicePort{
-			Name:       strings.ReplaceAll(iListeners.GetListenerServiceName(), "_", ""),
-			Port:       iListeners.ContainerPort,
-			TargetPort: intstr.FromInt(int(iListeners.ContainerPort)),
+			Name:       strings.ReplaceAll(iListener.GetListenerServiceName(), "_", ""),
+			Port:       iListener.ContainerPort,
+			TargetPort: intstr.FromInt(int(iListener.ContainerPort)),
 			Protocol:   corev1.ProtocolTCP,
 		})
 	}
 	//Append external listener ports as well to allow using this service for metadata fetch
-	for _, eListeners := range r.KafkaCluster.Spec.ListenersConfig.ExternalListeners {
+	for _, eListener := range r.KafkaCluster.Spec.ListenersConfig.ExternalListeners {
 		usedPorts = append(usedPorts, corev1.ServicePort{
-			Name:     strings.ReplaceAll(eListeners.GetListenerServiceName(), "_", ""),
-			Port:     eListeners.ContainerPort,
+			Name:     strings.ReplaceAll(eListener.GetListenerServiceName(), "_", ""),
+			Port:     eListener.ContainerPort,
 			Protocol: corev1.ProtocolTCP,
 		})
 	}

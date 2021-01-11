@@ -18,18 +18,18 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/banzaicloud/kafka-operator/api/v1beta1"
 	"github.com/banzaicloud/kafka-operator/pkg/resources/templates"
 	"github.com/banzaicloud/kafka-operator/pkg/util"
 	"github.com/banzaicloud/kafka-operator/pkg/util/kafka"
 
-	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
 
 	corev1 "k8s.io/api/core/v1"
 )
 
-func (r *Reconciler) service(id int32, log logr.Logger) runtime.Object {
+func (r *Reconciler) service(id int32, brokerConfig *v1beta1.BrokerConfig) runtime.Object {
 
 	var usedPorts []corev1.ServicePort
 
@@ -43,6 +43,10 @@ func (r *Reconciler) service(id int32, log logr.Logger) runtime.Object {
 	}
 	if r.KafkaCluster.Spec.ListenersConfig.ExternalListeners != nil {
 		for _, eListener := range r.KafkaCluster.Spec.ListenersConfig.ExternalListeners {
+			if !util.StringSliceContains(brokerConfig.ExternalListenerBindings, eListener.Name) &&
+				len(brokerConfig.ExternalListenerBindings) != 0 {
+				continue
+			}
 			usedPorts = append(usedPorts, corev1.ServicePort{
 				Name:       eListener.GetListenerServiceName(),
 				Protocol:   corev1.ProtocolTCP,

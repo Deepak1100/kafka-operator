@@ -257,7 +257,8 @@ func UpdateRollingUpgradeState(c client.Client, cluster *v1beta1.KafkaCluster, t
 	return nil
 }
 
-func UpdateListenerStatuses(ctx context.Context, c client.Client, cluster *v1beta1.KafkaCluster, logger logr.Logger, intListenerStatuses, extListenerStatuses map[string]v1beta1.ListenerStatusList) error {
+func UpdateListenerStatuses(ctx context.Context, c client.Client, cluster *v1beta1.KafkaCluster, logger logr.Logger,
+	intListenerStatuses, extListenerStatuses map[string]v1beta1.ListenerStatusList) error {
 	typeMeta := cluster.TypeMeta
 
 	cluster.Status.ListenerStatuses = v1beta1.ListenerStatuses{

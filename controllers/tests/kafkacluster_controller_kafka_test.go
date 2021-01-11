@@ -69,19 +69,19 @@ func expectKafkaAllBrokerService(kafkaCluster *v1beta1.KafkaCluster) {
 	Expect(service.Spec.Ports).To(ConsistOf(
 		corev1.ServicePort{
 			Name:       "tcp-internal",
-			Protocol:   "TCP",
+			Protocol:   corev1.ProtocolTCP,
 			Port:       29092,
 			TargetPort: intstr.FromInt(29092),
 		},
 		corev1.ServicePort{
 			Name:       "tcp-controller",
-			Protocol:   "TCP",
+			Protocol:   corev1.ProtocolTCP,
 			Port:       29093,
 			TargetPort: intstr.FromInt(29093),
 		},
 		corev1.ServicePort{
 			Name:       "tcp-test",
-			Protocol:   "TCP",
+			Protocol:   corev1.ProtocolTCP,
 			Port:       9094,
 			TargetPort: intstr.FromInt(9094),
 		}))
@@ -162,17 +162,17 @@ func expectKafkaBrokerConfigmap(kafkaCluster *v1beta1.KafkaCluster, broker v1bet
 	Expect(configMap.Labels).To(HaveKeyWithValue("kafka_cr", kafkaCluster.Name))
 	Expect(configMap.Labels).To(HaveKeyWithValue("brokerId", strconv.Itoa(int(broker.Id))))
 
-	Expect(configMap.Data).To(HaveKeyWithValue("broker-config", fmt.Sprintf(`advertised.listeners=TEST://test.host.com:%d,INTERNAL://kafkacluster-1-%d.kafka-1.svc.cluster.local:29092,CONTROLLER://kafkacluster-1-%d.kafka-1.svc.cluster.local:29093
+	Expect(configMap.Data).To(HaveKeyWithValue("broker-config", fmt.Sprintf(`advertised.listeners=CONTROLLER://kafkacluster-1-%d.kafka-1.svc.cluster.local:29093,INTERNAL://kafkacluster-1-%d.kafka-1.svc.cluster.local:29092,TEST://test.host.com:%d
 broker.id=%d
 control.plane.listener.name=CONTROLLER
 cruise.control.metrics.reporter.bootstrap.servers=INTERNAL://kafkacluster-1-%d.kafka-1.svc.cluster.local:29092
 cruise.control.metrics.reporter.kubernetes.mode=true
 inter.broker.listener.name=INTERNAL
-listener.security.protocol.map=INTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT,TEST:
+listener.security.protocol.map=INTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT,TEST:PLAINTEXT
 listeners=INTERNAL://:29092,CONTROLLER://:29093,TEST://:9094
 log.dirs=/kafka-logs/kafka
 metric.reporters=com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsReporter
-zookeeper.connect=/`, 19090+broker.Id, broker.Id, broker.Id, broker.Id, broker.Id)))
+zookeeper.connect=/`, broker.Id, broker.Id, 19090+broker.Id, broker.Id, broker.Id)))
 
 	// assert log4j?
 }

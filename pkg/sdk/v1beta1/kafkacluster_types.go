@@ -140,6 +140,9 @@ type BrokerConfig struct {
 	PodSecurityContext *corev1.PodSecurityContext `json:"podSecurityContext,omitempty"`
 	// SecurityContext allows to set security context for the kafka container
 	SecurityContext *corev1.SecurityContext `json:"securityContext,omitempty"`
+	// ExternalListenerBindings allows to set specific external listener to a specific broker mappings.
+	// If left empty, all external listener will be set as an advertised.listener config
+	ExternalListenerBindings []string `json:"externalListenerBindings,omitempty"`
 }
 
 type NetworkConfig struct {

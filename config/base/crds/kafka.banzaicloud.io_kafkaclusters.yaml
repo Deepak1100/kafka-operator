@@ -706,6 +706,13 @@ spec:
                     type: object
                   config:
                     type: string
+                  externalListenerBindings:
+                    description: ExternalListenerBindings allows to set specific loadbalancers
+                      to a specific broker mappings. If left empty all external listener
+                      will be set as an advertised.listener config
+                    items:
+                      type: string
+                    type: array
                   image:
                     type: string
                   imagePullSecrets:
@@ -1886,6 +1893,14 @@ spec:
                         type: object
                       config:
                         type: string
+                      externalListenerBindings:
+                        description: ExternalListenerBindings allows to set specific
+                          loadbalancers to a specific broker mappings. If left empty
+                          all external listener will be set as an advertised.listener
+                          config
+                        items:
+                          type: string
+                        type: array
                       image:
                         type: string
                       imagePullSecrets:
