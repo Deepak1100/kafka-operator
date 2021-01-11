@@ -30,6 +30,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/banzaicloud/kafka-operator/api/v1alpha1"
@@ -937,4 +938,39 @@ func (r *Reconciler) reorderBrokers(log logr.Logger, brokers []v1beta1.Broker) [
 	}
 	reorderedBrokers = append(reorderedBrokers, controllerBroker)
 	return reorderedBrokers
+}
+
+func generateServicePortForIListeners(listeners []v1beta1.InternalListenerConfig) []corev1.ServicePort {
+	var usedPorts []corev1.ServicePort
+	for _, iListener := range listeners {
+		usedPorts = append(usedPorts, corev1.ServicePort{
+			Name:       strings.ReplaceAll(iListener.GetListenerServiceName(), "_", ""),
+			Port:       iListener.ContainerPort,
+			TargetPort: intstr.FromInt(int(iListener.ContainerPort)),
+			Protocol:   corev1.ProtocolTCP,
+		})
+	}
+	return usedPorts
+}
+
+func generateServicePortForEListeners(listeners []v1beta1.ExternalListenerConfig) []corev1.ServicePort {
+	return generateServicePortForEListenersWithBinding(listeners, nil)
+}
+
+func generateServicePortForEListenersWithBinding(listeners []v1beta1.ExternalListenerConfig,
+	brokerConfig *v1beta1.BrokerConfig) []corev1.ServicePort {
+	var usedPorts []corev1.ServicePort
+	for _, eListener := range listeners {
+		if brokerConfig != nil && !util.StringSliceContains(brokerConfig.ExternalListenerBindings, eListener.Name) &&
+			len(brokerConfig.ExternalListenerBindings) != 0 {
+			continue
+		}
+		usedPorts = append(usedPorts, corev1.ServicePort{
+			Name:       eListener.GetListenerServiceName(),
+			Protocol:   corev1.ProtocolTCP,
+			Port:       eListener.ContainerPort,
+			TargetPort: intstr.FromInt(int(eListener.ContainerPort)),
+		})
+	}
+	return usedPorts
 }

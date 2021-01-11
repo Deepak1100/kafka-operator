@@ -707,9 +707,9 @@ spec:
                   config:
                     type: string
                   externalListenerBindings:
-                    description: ExternalListenerBindings allows to set specific loadbalancers
-                      to a specific broker mappings. If left empty all external listener
-                      will be set as an advertised.listener config
+                    description: ExternalListenerBindings allows to set specific external
+                      listener to a specific broker mappings. If left empty, all external
+                      listener will be set as an advertised.listener config
                     items:
                       type: string
                     type: array
@@ -1895,8 +1895,8 @@ spec:
                         type: string
                       externalListenerBindings:
                         description: ExternalListenerBindings allows to set specific
-                          loadbalancers to a specific broker mappings. If left empty
-                          all external listener will be set as an advertised.listener
+                          external listener to a specific broker mappings. If left
+                          empty, all external listener will be set as an advertised.listener
                           config
                         items:
                           type: string

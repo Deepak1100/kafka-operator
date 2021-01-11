@@ -16,11 +16,9 @@ package kafka
 
 import (
 	"fmt"
-	"strings"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/util/intstr"
 
 	"github.com/banzaicloud/kafka-operator/pkg/resources/templates"
 	kafkautils "github.com/banzaicloud/kafka-operator/pkg/util/kafka"
@@ -29,23 +27,13 @@ import (
 func (r *Reconciler) allBrokerService() runtime.Object {
 
 	var usedPorts []corev1.ServicePort
+	// Append internal listener ports
+	usedPorts = append(usedPorts,
+		generateServicePortForIListeners(r.KafkaCluster.Spec.ListenersConfig.InternalListeners)...)
 
-	for _, iListener := range r.KafkaCluster.Spec.ListenersConfig.InternalListeners {
-		usedPorts = append(usedPorts, corev1.ServicePort{
-			Name:       strings.ReplaceAll(iListener.GetListenerServiceName(), "_", ""),
-			Port:       iListener.ContainerPort,
-			TargetPort: intstr.FromInt(int(iListener.ContainerPort)),
-			Protocol:   corev1.ProtocolTCP,
-		})
-	}
 	//Append external listener ports as well to allow using this service for metadata fetch
-	for _, eListener := range r.KafkaCluster.Spec.ListenersConfig.ExternalListeners {
-		usedPorts = append(usedPorts, corev1.ServicePort{
-			Name:     strings.ReplaceAll(eListener.GetListenerServiceName(), "_", ""),
-			Port:     eListener.ContainerPort,
-			Protocol: corev1.ProtocolTCP,
-		})
-	}
+	usedPorts = append(usedPorts,
+		generateServicePortForEListeners(r.KafkaCluster.Spec.ListenersConfig.ExternalListeners)...)
 
 	return &corev1.Service{
 		ObjectMeta: templates.ObjectMetaWithAnnotations(
