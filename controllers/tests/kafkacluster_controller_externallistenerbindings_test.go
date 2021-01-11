@@ -56,7 +56,7 @@ listener.security.protocol.map=INTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT,TEST:PLAI
 listeners=INTERNAL://:29092,CONTROLLER://:29093,TEST://:9094,EXTERNAL://:9095
 log.dirs=/kafka-logs/kafka
 metric.reporters=com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsReporter
-zookeeper.connect=/`, randomGenTestNumber, broker.Id,randomGenTestNumber, 19095+broker.Id, randomGenTestNumber, broker.Id, randomGenTestNumber, 19090+broker.Id, broker.Id, broker.Id)))
+zookeeper.connect=/`, randomGenTestNumber, broker.Id, randomGenTestNumber, 19095+broker.Id, randomGenTestNumber, broker.Id, randomGenTestNumber, 19090+broker.Id, broker.Id, broker.Id)))
 		// check service
 		service := corev1.Service{}
 		Eventually(func() error {
@@ -305,7 +305,7 @@ listener.security.protocol.map=INTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT,TEST:PLAI
 listeners=INTERNAL://:29092,CONTROLLER://:29093,TEST://:9094
 log.dirs=/kafka-logs/kafka
 metric.reporters=com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsReporter
-zookeeper.connect=/`, randomGenTestNumber, broker.Id, randomGenTestNumber, randomGenTestNumber, broker.Id,randomGenTestNumber, 19090+broker.Id, broker.Id, broker.Id)))
+zookeeper.connect=/`, randomGenTestNumber, broker.Id, randomGenTestNumber, randomGenTestNumber, broker.Id, randomGenTestNumber, 19090+broker.Id, broker.Id, broker.Id)))
 		// check service
 		service := corev1.Service{}
 		Eventually(func() error {

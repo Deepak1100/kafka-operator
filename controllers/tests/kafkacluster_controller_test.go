@@ -26,7 +26,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	// logf "sigs.k8s.io/controller-runtime/pkg/log"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/banzaicloud/kafka-operator/api/v1beta1"
 	"github.com/banzaicloud/kafka-operator/pkg/util"
@@ -100,7 +100,7 @@ var _ = Describe("KafkaCluster", func() {
 			Hostname: "test.host.com",
 		}}
 
-		// logf.Log.V(-1).Info("envoy service updated", "spec", envoyLBService)
+		logf.Log.V(-1).Info("envoy service updated", "spec", envoyLBService)
 		err = k8sClient.Status().Update(context.TODO(), envoyLBService)
 		Expect(err).NotTo(HaveOccurred())
 	})
@@ -153,7 +153,7 @@ var _ = Describe("KafkaCluster", func() {
 				Hostname: "external.host.com",
 			}}
 
-			// logf.Log.V(-1).Info("envoy service updated", "spec", envoyTestLBService)
+			logf.Log.V(-1).Info("envoy service updated", "spec", envoyTestLBService)
 			err := k8sClient.Status().Update(context.TODO(), envoyTestLBService)
 			Expect(err).NotTo(HaveOccurred())
 
@@ -201,7 +201,7 @@ func expectKafkaMonitoring(kafkaCluster *v1beta1.KafkaCluster) {
 func expectCruiseControlMonitoring(kafkaCluster *v1beta1.KafkaCluster) {
 	configMap := corev1.ConfigMap{}
 	configMapName := fmt.Sprintf("%s-cc-jmx-exporter", kafkaCluster.Name)
-	// logf.Log.Info("name", "name", configMapName)
+	logf.Log.Info("name", "name", configMapName)
 	Eventually(func() error {
 		err := k8sClient.Get(context.TODO(), types.NamespacedName{Name: configMapName, Namespace: kafkaCluster.Namespace}, &configMap)
 		return err
