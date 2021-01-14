@@ -37,6 +37,7 @@ import (
 
 const (
 	symbolSet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
+	loadBalancerConfigGlobalName = "globalConfig"
 )
 
 // IntstrPointer generate IntOrString pointer from int
@@ -205,6 +206,73 @@ func GetBrokerIdsFromStatusAndSpec(brokerStatuses map[string]v1beta1.BrokerState
 	}
 	sort.Ints(brokerIds)
 	return brokerIds
+}
+// GetEnvoyIngressConfigs compose the envoy ingress configuration for a given externalListener
+func GetEnvoyIngressConfigs(
+	globalConfig v1beta1.EnvoyConfig, eListenerConfig v1beta1.ExternalListenerConfig) (map[string]v1beta1.IngressConfig, error){
+	var ingressConfigs map[string]v1beta1.IngressConfig
+	// Merge specific external listener configuration with the global one if none specified
+	if eListenerConfig.Config != nil {
+		ingressConfigs = make(map[string]v1beta1.IngressConfig, len(eListenerConfig.Config.IngressConfig))
+		for k, iConf := range eListenerConfig.Config.IngressConfig {
+			if iConf.EnvoyConfig != nil {
+				err := mergo.Merge(iConf.EnvoyConfig, globalConfig)
+				if err != nil {
+					return nil, errors.WrapWithDetails(err,
+						"could not merge global envoy config with local one", "envoyConfig", k)
+				}
+				err = mergo.Merge(&iConf.LoadBalancerSettings, eListenerConfig.LoadBalancerSettings)
+				if err != nil {
+					return nil, errors.WrapWithDetails(err,
+						"could not merge global loadbalancer config with local one",
+						"externalListenerName", eListenerConfig.Name)
+				}
+				ingressConfigs[k]= iConf
+			}
+		}
+	} else {
+		ingressConfigs = map[string]v1beta1.IngressConfig{
+			loadBalancerConfigGlobalName: {
+				LoadBalancerSettings: eListenerConfig.LoadBalancerSettings,
+				EnvoyConfig: &globalConfig,
+			},
+		}
+	}
+	return ingressConfigs, nil
+}
+
+// GetIstioIngressConfigs compose the Istio ingress configuration for a given externalListener
+func GetIstioIngressConfigs(
+	globalConfig v1beta1.IstioIngressConfig, eListenerConfig v1beta1.ExternalListenerConfig) (map[string]v1beta1.IngressConfig, error){
+	var ingressConfigs map[string]v1beta1.IngressConfig
+	// Merge specific external listener configuration with the global one if none specified
+	if eListenerConfig.Config != nil {
+		ingressConfigs = make(map[string]v1beta1.IngressConfig, len(eListenerConfig.Config.IngressConfig))
+		for k, iConf := range eListenerConfig.Config.IngressConfig {
+			if iConf.IstioIngressConfig != nil {
+				err := mergo.Merge(iConf.IstioIngressConfig, globalConfig)
+				if err != nil {
+					return nil, errors.WrapWithDetails(err,
+						"could not merge global istio config with local one", "istioConfig", k)
+				}
+				err = mergo.Merge(&iConf.LoadBalancerSettings, eListenerConfig.LoadBalancerSettings)
+				if err != nil {
+					return nil, errors.WrapWithDetails(err,
+						"could not merge global loadbalancer config with local one",
+						"externalListenerName", eListenerConfig.Name)
+				}
+				ingressConfigs[k]= iConf
+			}
+		}
+	} else {
+		ingressConfigs = map[string]v1beta1.IngressConfig{
+			loadBalancerConfigGlobalName: {
+				LoadBalancerSettings: eListenerConfig.LoadBalancerSettings,
+				IstioIngressConfig: &globalConfig,
+			},
+		}
+	}
+	return ingressConfigs, nil
 }
 
 // GetBrokerConfig compose the brokerConfig for a given broker
