@@ -68,11 +68,11 @@ func (r *Reconciler) Reconcile(log logr.Logger) error {
 
 		for _, eListener := range r.KafkaCluster.Spec.ListenersConfig.ExternalListeners {
 			if eListener.GetAccessMethod() == corev1.ServiceTypeLoadBalancer {
-				ingressConfig ,err := util.GetEnvoyIngressConfigs(r.KafkaCluster.Spec.EnvoyConfig, eListener)
+				ingressConfigs ,err := util.GetEnvoyIngressConfigs(r.KafkaCluster.Spec.EnvoyConfig, eListener)
 				if err != nil {
 					return err
 				}
-				for name, ingressConfig := range ingressConfig {
+				for name, ingressConfig := range ingressConfigs {
 					for _, res := range []resources.ResourceWithLogAndExternalListenerConfigAndIngressConfigWithName{
 						r.loadBalancer,
 						r.configMap,

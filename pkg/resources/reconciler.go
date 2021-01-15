@@ -44,11 +44,6 @@ type Resource func() runtime.Object
 // ResourceWithLogs function with log parameter
 type ResourceWithLogs func(log logr.Logger) runtime.Object
 
-// ResourceWithLogAndExternalListenerConfigAndIstioIngressConfig function with
-// log and externalListenerConfig and istioIngress config parameter
-type ResourceWithLogAndExternalListenerConfigAndIstioIngressConfig func(log logr.Logger,
-	externalListenerConfig v1beta1.ExternalListenerConfig, istioIngressConfig v1beta1.IstioIngressConfig) runtime.Object
-
 // ResourceWithLogAndExternalListenerConfigAndIngressConfigWithName function with
 //log and externalListenerConfig and ingressConfig parameter with name
 type ResourceWithLogAndExternalListenerConfigAndIngressConfigWithName func(log logr.Logger,

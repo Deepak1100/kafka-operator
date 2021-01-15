@@ -31,7 +31,8 @@ import (
 )
 
 func (r *Reconciler) meshgateway(log logr.Logger, externalListenerConfig v1beta1.ExternalListenerConfig,
-	istioIngressConfig v1beta1.IstioIngressConfig) runtime.Object {
+	ingressConfig v1beta1.IngressConfig, ingressConfigName string) runtime.Object {
+
 	mgateway := &istioOperatorApi.MeshGateway{
 		ObjectMeta: templates.ObjectMeta(
 			fmt.Sprintf(istioingressutils.MeshGatewayNameTemplate, externalListenerConfig.Name, r.KafkaCluster.Name),
@@ -39,22 +40,23 @@ func (r *Reconciler) meshgateway(log logr.Logger, externalListenerConfig v1beta1
 		Spec: istioOperatorApi.MeshGatewaySpec{
 			MeshGatewayConfiguration: istioOperatorApi.MeshGatewayConfiguration{
 				Labels:             labelsForIstioIngress(r.KafkaCluster.Name, externalListenerConfig.Name),
-				ServiceAnnotations: externalListenerConfig.GetServiceAnnotations(),
+				ServiceAnnotations: ingressConfig.GetServiceAnnotations(),
 				BaseK8sResourceConfigurationWithHPAWithoutImage: istioOperatorApi.BaseK8sResourceConfigurationWithHPAWithoutImage{
-					ReplicaCount: util.Int32Pointer(istioIngressConfig.GetReplicas()),
-					MinReplicas:  util.Int32Pointer(istioIngressConfig.GetReplicas()),
-					MaxReplicas:  util.Int32Pointer(istioIngressConfig.GetReplicas()),
+					ReplicaCount: util.Int32Pointer(ingressConfig.IstioIngressConfig.GetReplicas()),
+					MinReplicas:  util.Int32Pointer(ingressConfig.IstioIngressConfig.GetReplicas()),
+					MaxReplicas:  util.Int32Pointer(ingressConfig.IstioIngressConfig.GetReplicas()),
 					BaseK8sResourceConfiguration: istioOperatorApi.BaseK8sResourceConfiguration{
-						Resources:      istioIngressConfig.GetResources(),
-						NodeSelector:   istioIngressConfig.NodeSelector,
-						Tolerations:    istioIngressConfig.Tolerations,
-						PodAnnotations: istioIngressConfig.Annotations,
+						Resources:      ingressConfig.IstioIngressConfig.GetResources(),
+						NodeSelector:   ingressConfig.IstioIngressConfig.NodeSelector,
+						Tolerations:    ingressConfig.IstioIngressConfig.Tolerations,
+						PodAnnotations: ingressConfig.IstioIngressConfig.Annotations,
 					},
 				},
 				ServiceType: corev1.ServiceTypeLoadBalancer,
 			},
-			Ports: generateExternalPorts(util.GetBrokerIdsFromStatusAndSpec(r.KafkaCluster.Status.BrokersState, r.KafkaCluster.Spec.Brokers, log),
-				externalListenerConfig),
+			Ports: generateExternalPorts(r.KafkaCluster.Spec,
+				util.GetBrokerIdsFromStatusAndSpec(r.KafkaCluster.Status.BrokersState, r.KafkaCluster.Spec.Brokers, log),
+				externalListenerConfig, log, ingressConfigName),
 			Type: istioOperatorApi.GatewayTypeIngress,
 		},
 	}
@@ -62,14 +64,23 @@ func (r *Reconciler) meshgateway(log logr.Logger, externalListenerConfig v1beta1
 	return mgateway
 }
 
-func generateExternalPorts(brokerIds []int, externalListenerConfig v1beta1.ExternalListenerConfig) []corev1.ServicePort {
+func generateExternalPorts(kc v1beta1.KafkaClusterSpec, brokerIds []int,
+	externalListenerConfig v1beta1.ExternalListenerConfig, log logr.Logger, ingressConfigName string) []corev1.ServicePort {
+
 	generatedPorts := make([]corev1.ServicePort, 0)
 	for _, brokerId := range brokerIds {
-		generatedPorts = append(generatedPorts, corev1.ServicePort{
-			Name:       fmt.Sprintf("tcp-broker-%d", brokerId),
-			TargetPort: intstr.FromInt(int(externalListenerConfig.ExternalStartingPort) + brokerId),
-			Port:       externalListenerConfig.ExternalStartingPort + int32(brokerId),
-		})
+		brokerConfig, err := util.GetBrokerConfig(kc.Brokers[brokerId], kc)
+		if err != nil {
+			log.Error(err, "could not determine brokerConfig")
+		}
+		if len(brokerConfig.BrokerIdBindings) == 0 ||
+			util.StringSliceContains(brokerConfig.BrokerIdBindings, ingressConfigName) {
+			generatedPorts = append(generatedPorts, corev1.ServicePort{
+				Name:       fmt.Sprintf("tcp-broker-%d", brokerId),
+				TargetPort: intstr.FromInt(int(externalListenerConfig.ExternalStartingPort) + brokerId),
+				Port:       externalListenerConfig.ExternalStartingPort + int32(brokerId),
+			})
+		}
 	}
 
 	generatedPorts = append(generatedPorts, corev1.ServicePort{
