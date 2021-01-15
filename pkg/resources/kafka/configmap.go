@@ -210,16 +210,10 @@ func generateListenerSpecificConfig(l *v1beta1.ListenersConfig, id int32,
 		listenerConfig = append(listenerConfig, fmt.Sprintf("%s://:%d", UpperedListenerName, iListener.ContainerPort))
 	}
 	for _, eListener := range l.ExternalListeners {
-		if statusList, ok := extListenerStatuses[eListener.Name]; ok {
-			for _, status := range statusList {
-				if status.Name == fmt.Sprintf("broker-%d", id) {
-					UpperedListenerType := strings.ToUpper(eListener.Type)
-					UpperedListenerName := strings.ToUpper(eListener.Name)
-					securityProtocolMapConfig = append(securityProtocolMapConfig, fmt.Sprintf("%s:%s", UpperedListenerName, UpperedListenerType))
-					listenerConfig = append(listenerConfig, fmt.Sprintf("%s://:%d", UpperedListenerName, eListener.ContainerPort))
-				}
-			}
-		}
+		UpperedListenerType := strings.ToUpper(eListener.Type)
+		UpperedListenerName := strings.ToUpper(eListener.Name)
+		securityProtocolMapConfig = append(securityProtocolMapConfig, fmt.Sprintf("%s:%s", UpperedListenerName, UpperedListenerType))
+		listenerConfig = append(listenerConfig, fmt.Sprintf("%s://:%d", UpperedListenerName, eListener.ContainerPort))
 	}
 	return "listener.security.protocol.map=" + strings.Join(securityProtocolMapConfig, ",") + "\n" +
 		"inter.broker.listener.name=" + interBrokerListenerName + "\n" +

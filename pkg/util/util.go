@@ -36,8 +36,8 @@ import (
 )
 
 const (
-	symbolSet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
-	loadBalancerConfigGlobalName = "globalConfig"
+	symbolSet               = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
+	IngressConfigGlobalName = "globalConfig"
 )
 
 // IntstrPointer generate IntOrString pointer from int
@@ -221,7 +221,7 @@ func GetEnvoyIngressConfigs(
 					return nil, errors.WrapWithDetails(err,
 						"could not merge global envoy config with local one", "envoyConfig", k)
 				}
-				err = mergo.Merge(&iConf.LoadBalancerSettings, eListenerConfig.LoadBalancerSettings)
+				err = mergo.Merge(&iConf.IngressServiceSettings, eListenerConfig.IngressServiceSettings)
 				if err != nil {
 					return nil, errors.WrapWithDetails(err,
 						"could not merge global loadbalancer config with local one",
@@ -232,8 +232,8 @@ func GetEnvoyIngressConfigs(
 		}
 	} else {
 		ingressConfigs = map[string]v1beta1.IngressConfig{
-			loadBalancerConfigGlobalName: {
-				LoadBalancerSettings: eListenerConfig.LoadBalancerSettings,
+			IngressConfigGlobalName: {
+				IngressServiceSettings: eListenerConfig.IngressServiceSettings,
 				EnvoyConfig: &globalConfig,
 			},
 		}
@@ -255,7 +255,7 @@ func GetIstioIngressConfigs(
 					return nil, errors.WrapWithDetails(err,
 						"could not merge global istio config with local one", "istioConfig", k)
 				}
-				err = mergo.Merge(&iConf.LoadBalancerSettings, eListenerConfig.LoadBalancerSettings)
+				err = mergo.Merge(&iConf.IngressServiceSettings, eListenerConfig.IngressServiceSettings)
 				if err != nil {
 					return nil, errors.WrapWithDetails(err,
 						"could not merge global loadbalancer config with local one",
@@ -266,8 +266,8 @@ func GetIstioIngressConfigs(
 		}
 	} else {
 		ingressConfigs = map[string]v1beta1.IngressConfig{
-			loadBalancerConfigGlobalName: {
-				LoadBalancerSettings: eListenerConfig.LoadBalancerSettings,
+			IngressConfigGlobalName: {
+				IngressServiceSettings: eListenerConfig.IngressServiceSettings,
 				IstioIngressConfig: &globalConfig,
 			},
 		}

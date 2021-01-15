@@ -689,7 +689,7 @@ func TestGetEnvoyIngressConfigs(t *testing.T) {
 				ExternalStartingPort: 19090,
 			},
 			map[string]v1beta1.IngressConfig{
-				loadBalancerConfigGlobalName: {EnvoyConfig: defaultEnvoyConfig},
+				IngressConfigGlobalName: {EnvoyConfig: defaultEnvoyConfig},
 			},
 		},
 		//// ExternalListener Specified config is set
@@ -810,7 +810,7 @@ func TestGetIstioIngressConfigs(t *testing.T) {
 				ExternalStartingPort: 19090,
 			},
 			map[string]v1beta1.IngressConfig{
-				loadBalancerConfigGlobalName: {IstioIngressConfig: defaultIstioIngressConfig},
+				IngressConfigGlobalName: {IstioIngressConfig: defaultIstioIngressConfig},
 			},
 		},
 		//// ExternalListener Specified config is set

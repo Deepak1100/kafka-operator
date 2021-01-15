@@ -49,10 +49,11 @@ type ResourceWithLogs func(log logr.Logger) runtime.Object
 type ResourceWithLogAndExternalListenerConfigAndIstioIngressConfig func(log logr.Logger,
 	externalListenerConfig v1beta1.ExternalListenerConfig, istioIngressConfig v1beta1.IstioIngressConfig) runtime.Object
 
-// ResourceWithLogAndExternalListenerConfigAndEnvoyConfig function with
-//log and externalListenerConfig and envoyConfig parameter
-type ResourceWithLogAndExternalListenerConfigAndEnvoyConfig func(log logr.Logger,
-	externalListenerConfig v1beta1.ExternalListenerConfig, envoyConfig v1beta1.EnvoyConfig) runtime.Object
+// ResourceWithLogAndExternalListenerConfigAndIngressConfigWithName function with
+//log and externalListenerConfig and ingressConfig parameter with name
+type ResourceWithLogAndExternalListenerConfigAndIngressConfigWithName func(log logr.Logger,
+	externalListenerConfig v1beta1.ExternalListenerConfig, ingressConfig v1beta1.IngressConfig,
+	ingressConfigName string) runtime.Object
 
 // ResourceWithBrokerConfigAndVolume function with brokerConfig, persistentVolumeClaims and log parameters
 type ResourceWithBrokerConfigAndVolume func(id int32, brokerConfig *v1beta1.BrokerConfig, pvcs []corev1.PersistentVolumeClaim, log logr.Logger) runtime.Object

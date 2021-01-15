@@ -15,11 +15,13 @@
 package envoy
 
 import (
+	corev1 "k8s.io/api/core/v1"
+
 	"github.com/banzaicloud/kafka-operator/api/v1beta1"
 	"github.com/banzaicloud/kafka-operator/pkg/k8sutil"
 	"github.com/banzaicloud/kafka-operator/pkg/resources"
+	"github.com/banzaicloud/kafka-operator/pkg/util"
 	envoyutils "github.com/banzaicloud/kafka-operator/pkg/util/envoy"
-	corev1 "k8s.io/api/core/v1"
 
 	"github.com/go-logr/logr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -29,7 +31,9 @@ const (
 	componentName = "envoy"
 	// The deployment and configmap name should made from the external listener name the cluster name to avoid all naming collision
 	envoyVolumeAndConfigName = "envoy-config-%s-%s"
+	envoyVolumeAndConfigNameWithScope = "envoy-config-%s-%s-%s"
 	envoyDeploymentName      = "envoy-%s-%s"
+	envoyDeploymentNameWithScope      = "envoy-%s-%s-%s"
 	allBrokerEnvoyConfigName = "all-brokers"
 )
 
@@ -60,30 +64,28 @@ func (r *Reconciler) Reconcile(log logr.Logger) error {
 
 	log.V(1).Info("Reconciling")
 
-	if r.KafkaCluster.Spec.ListenersConfig.ExternalListeners != nil && r.KafkaCluster.Spec.GetIngressController() == envoyutils.IngressControllerName {
+	if r.KafkaCluster.Spec.GetIngressController() == envoyutils.IngressControllerName {
 
 		for _, eListener := range r.KafkaCluster.Spec.ListenersConfig.ExternalListeners {
 			if eListener.GetAccessMethod() == corev1.ServiceTypeLoadBalancer {
-
-				// Prefer specific external listener configuration but fall back to global one if none specified
-				var envoyConfig v1beta1.EnvoyConfig
-				if eListener.Config != nil && eListener.Config.EnvoyConfig != nil {
-					envoyConfig = *eListener.Config.EnvoyConfig
-				} else {
-					envoyConfig = r.KafkaCluster.Spec.EnvoyConfig
+				ingressConfig ,err := util.GetEnvoyIngressConfigs(r.KafkaCluster.Spec.EnvoyConfig, eListener)
+				if err != nil {
+					return err
 				}
-
-				for _, res := range []resources.ResourceWithLogAndExternalListenerConfigAndEnvoyConfig{
-					r.loadBalancer,
-					r.configMap,
-					r.deployment,
-				} {
-					o := res(log, eListener, envoyConfig)
-					err := k8sutil.Reconcile(log, r.Client, o, r.KafkaCluster)
-					if err != nil {
-						return err
+				for name, ingressConfig := range ingressConfig {
+					for _, res := range []resources.ResourceWithLogAndExternalListenerConfigAndIngressConfigWithName{
+						r.loadBalancer,
+						r.configMap,
+						r.deployment,
+					} {
+						o := res(log, eListener, ingressConfig, name)
+						err := k8sutil.Reconcile(log, r.Client, o, r.KafkaCluster)
+						if err != nil {
+							return err
+						}
 					}
 				}
+
 			}
 		}
 	}
