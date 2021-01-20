@@ -33,6 +33,8 @@ import (
 	k8s_zap "sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	"github.com/banzaicloud/kafka-operator/api/v1beta1"
+	envoyutils "github.com/banzaicloud/kafka-operator/pkg/util/envoy"
+	"github.com/banzaicloud/kafka-operator/pkg/util/istioingress"
 )
 
 const (
@@ -207,70 +209,93 @@ func GetBrokerIdsFromStatusAndSpec(brokerStatuses map[string]v1beta1.BrokerState
 	sort.Ints(brokerIds)
 	return brokerIds
 }
-// GetEnvoyIngressConfigs compose the envoy ingress configuration for a given externalListener
-func GetEnvoyIngressConfigs(
-	globalConfig v1beta1.EnvoyConfig, eListenerConfig v1beta1.ExternalListenerConfig) (map[string]v1beta1.IngressConfig, error){
-	var ingressConfigs map[string]v1beta1.IngressConfig
-	// Merge specific external listener configuration with the global one if none specified
-	if eListenerConfig.Config != nil {
-		ingressConfigs = make(map[string]v1beta1.IngressConfig, len(eListenerConfig.Config.IngressConfig))
-		for k, iConf := range eListenerConfig.Config.IngressConfig {
-			if iConf.EnvoyConfig != nil {
-				err := mergo.Merge(iConf.EnvoyConfig, globalConfig)
-				if err != nil {
-					return nil, errors.WrapWithDetails(err,
-						"could not merge global envoy config with local one", "envoyConfig", k)
-				}
-				err = mergo.Merge(&iConf.IngressServiceSettings, eListenerConfig.IngressServiceSettings)
-				if err != nil {
-					return nil, errors.WrapWithDetails(err,
-						"could not merge global loadbalancer config with local one",
-						"externalListenerName", eListenerConfig.Name)
-				}
-				ingressConfigs[k]= iConf
-			}
-		}
-	} else {
-		ingressConfigs = map[string]v1beta1.IngressConfig{
-			IngressConfigGlobalName: {
-				IngressServiceSettings: eListenerConfig.IngressServiceSettings,
-				EnvoyConfig: &globalConfig,
-			},
-		}
-	}
-	return ingressConfigs, nil
-}
 
-// GetIstioIngressConfigs compose the Istio ingress configuration for a given externalListener
-func GetIstioIngressConfigs(
-	globalConfig v1beta1.IstioIngressConfig, eListenerConfig v1beta1.ExternalListenerConfig) (map[string]v1beta1.IngressConfig, error){
+//// IsIngressConfigInUse returns true if the provided ingressConfig name is bound to the given broker
+//func IsIngressConfigInUse(iConfigName string, brokerConfig *v1beta1.BrokerConfig,
+//	iConfigs map[string]v1beta1.IngressConfig) bool {
+//
+//	// Fall back to the default external listener access point which
+//	// is the alphabetical first one on the ingressConfig map
+//	if len(brokerConfig.BrokerIdBindings) == 0 && len(iConfigs) != 0 {
+//		sortedConfigs := make([]string, len(iConfigs), 0)
+//		for name := range iConfigs {
+//			sortedConfigs = append(sortedConfigs, name)
+//		}
+//		if sortedConfigs[0] == iConfigName {
+//			return true
+//		}
+//		return false
+//	}
+//
+//	if len(brokerConfig.BrokerIdBindings) == 0 ||
+//		StringSliceContains(brokerConfig.BrokerIdBindings, iConfigName){
+//		return true
+//	}
+//	return false
+//}
+
+// GetIngressConfigs compose the ingress configuration for a given externalListener
+func GetIngressConfigs(kafkaClusterSpec v1beta1.KafkaClusterSpec,
+	eListenerConfig v1beta1.ExternalListenerConfig) (map[string]v1beta1.IngressConfig, error) {
 	var ingressConfigs map[string]v1beta1.IngressConfig
 	// Merge specific external listener configuration with the global one if none specified
-	if eListenerConfig.Config != nil {
-		ingressConfigs = make(map[string]v1beta1.IngressConfig, len(eListenerConfig.Config.IngressConfig))
-		for k, iConf := range eListenerConfig.Config.IngressConfig {
-			if iConf.IstioIngressConfig != nil {
-				err := mergo.Merge(iConf.IstioIngressConfig, globalConfig)
-				if err != nil {
-					return nil, errors.WrapWithDetails(err,
-						"could not merge global istio config with local one", "istioConfig", k)
+	switch kafkaClusterSpec.GetIngressController() {
+	case envoyutils.IngressControllerName:
+		if eListenerConfig.Config != nil {
+			ingressConfigs = make(map[string]v1beta1.IngressConfig, len(eListenerConfig.Config.IngressConfig))
+			for k, iConf := range eListenerConfig.Config.IngressConfig {
+				if iConf.EnvoyConfig != nil {
+					err := mergo.Merge(iConf.EnvoyConfig, kafkaClusterSpec.EnvoyConfig)
+					if err != nil {
+						return nil, errors.WrapWithDetails(err,
+							"could not merge global envoy config with local one", "envoyConfig", k)
+					}
+					err = mergo.Merge(&iConf.IngressServiceSettings, eListenerConfig.IngressServiceSettings)
+					if err != nil {
+						return nil, errors.WrapWithDetails(err,
+							"could not merge global loadbalancer config with local one",
+							"externalListenerName", eListenerConfig.Name)
+					}
+					ingressConfigs[k] = iConf
 				}
-				err = mergo.Merge(&iConf.IngressServiceSettings, eListenerConfig.IngressServiceSettings)
-				if err != nil {
-					return nil, errors.WrapWithDetails(err,
-						"could not merge global loadbalancer config with local one",
-						"externalListenerName", eListenerConfig.Name)
-				}
-				ingressConfigs[k]= iConf
+			}
+		} else {
+			ingressConfigs = map[string]v1beta1.IngressConfig{
+				IngressConfigGlobalName: {
+					IngressServiceSettings: eListenerConfig.IngressServiceSettings,
+					EnvoyConfig:            &kafkaClusterSpec.EnvoyConfig,
+				},
 			}
 		}
-	} else {
-		ingressConfigs = map[string]v1beta1.IngressConfig{
-			IngressConfigGlobalName: {
-				IngressServiceSettings: eListenerConfig.IngressServiceSettings,
-				IstioIngressConfig: &globalConfig,
-			},
+	case istioingress.IngressControllerName:
+		if eListenerConfig.Config != nil {
+			ingressConfigs = make(map[string]v1beta1.IngressConfig, len(eListenerConfig.Config.IngressConfig))
+			for k, iConf := range eListenerConfig.Config.IngressConfig {
+				if iConf.IstioIngressConfig != nil {
+					err := mergo.Merge(iConf.IstioIngressConfig, kafkaClusterSpec.IstioIngressConfig)
+					if err != nil {
+						return nil, errors.WrapWithDetails(err,
+							"could not merge global istio config with local one", "istioConfig", k)
+					}
+					err = mergo.Merge(&iConf.IngressServiceSettings, eListenerConfig.IngressServiceSettings)
+					if err != nil {
+						return nil, errors.WrapWithDetails(err,
+							"could not merge global loadbalancer config with local one",
+							"externalListenerName", eListenerConfig.Name)
+					}
+					ingressConfigs[k] = iConf
+				}
+			}
+		} else {
+			ingressConfigs = map[string]v1beta1.IngressConfig{
+				IngressConfigGlobalName: {
+					IngressServiceSettings: eListenerConfig.IngressServiceSettings,
+					IstioIngressConfig:     &kafkaClusterSpec.IstioIngressConfig,
+				},
+			}
 		}
+	default:
+		return nil, errors.NewWithDetails("not supported ingress type", "name", kafkaClusterSpec.GetIngressController())
 	}
 	return ingressConfigs, nil
 }

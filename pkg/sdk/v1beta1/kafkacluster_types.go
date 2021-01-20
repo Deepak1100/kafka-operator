@@ -353,9 +353,9 @@ type IngressServiceSettings struct {
 
 // ExternalListenerConfig defines the external listener config for Kafka
 type ExternalListenerConfig struct {
-	CommonListenerSpec   `json:",inline"`
+	CommonListenerSpec     `json:",inline"`
 	IngressServiceSettings `json:",inline"`
-	ExternalStartingPort int32 `json:"externalStartingPort"`
+	ExternalStartingPort   int32 `json:"externalStartingPort"`
 	// configuring AnyCastPort allows kafka cluster access without specifying the exact broker
 	AnyCastPort *int32 `json:"anyCastPort,omitempty"`
 	// +kubebuilder:validation:Enum=LoadBalancer;NodePort
@@ -377,8 +377,8 @@ type Config struct {
 
 type IngressConfig struct {
 	IngressServiceSettings `json:",inline"`
-	IstioIngressConfig *IstioIngressConfig `json:"istioIngressConfig,omitempty"`
-	EnvoyConfig        *EnvoyConfig        `json:"envoyConfig,omitempty"`
+	IstioIngressConfig     *IstioIngressConfig `json:"istioIngressConfig,omitempty"`
+	EnvoyConfig            *EnvoyConfig        `json:"envoyConfig,omitempty"`
 }
 
 // InternalListenerConfig defines the internal listener config for Kafka

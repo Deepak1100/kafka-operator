@@ -41,8 +41,8 @@ func (r *Reconciler) deployment(log logr.Logger, extListener v1beta1.ExternalLis
 		configMapName = fmt.Sprintf(envoyVolumeAndConfigName, extListener.Name, r.KafkaCluster.GetName())
 		deploymentName = fmt.Sprintf(envoyDeploymentName, extListener.Name, r.KafkaCluster.GetName())
 	} else {
-		configMapName = fmt.Sprintf(envoyVolumeAndConfigNameWithScope, extListener.Name, ingressConfigName,r.KafkaCluster.GetName())
-		deploymentName = fmt.Sprintf(envoyDeploymentNameWithScope, extListener.Name, ingressConfigName,r.KafkaCluster.GetName())
+		configMapName = fmt.Sprintf(envoyVolumeAndConfigNameWithScope, extListener.Name, ingressConfigName, r.KafkaCluster.GetName())
+		deploymentName = fmt.Sprintf(envoyDeploymentNameWithScope, extListener.Name, ingressConfigName, r.KafkaCluster.GetName())
 	}
 
 	exposedPorts := getExposedContainerPorts(extListener,
@@ -82,7 +82,7 @@ func (r *Reconciler) deployment(log logr.Logger, extListener v1beta1.ExternalLis
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels:      labelsForEnvoyIngress(r.KafkaCluster.GetName(), extListener.Name),
-					Annotations: generatePodAnnotations(r.KafkaCluster, extListener, ingressConfig, ingressConfigName,log),
+					Annotations: generatePodAnnotations(r.KafkaCluster, extListener, ingressConfig, ingressConfigName, log),
 				},
 				Spec: corev1.PodSpec{
 					ServiceAccountName: ingressConfig.EnvoyConfig.GetServiceAccount(),

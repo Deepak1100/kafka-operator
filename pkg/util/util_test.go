@@ -657,31 +657,33 @@ func TestGetBrokerIdsFromStatusAndSpec(t *testing.T) {
 	}
 }
 func TestGetEnvoyIngressConfigs(t *testing.T) {
-	defaultEnvoyConfig := &v1beta1.EnvoyConfig{
-		Image:                    "envoyproxy/envoy:v1.14.4",
-		Resources:                &corev1.ResourceRequirements{
-			Limits: corev1.ResourceList{
-				"cpu":    resource.MustParse("100m"),
-				"memory": resource.MustParse("100Mi"),
+	defaultKafkaCluster := &v1beta1.KafkaClusterSpec{
+		EnvoyConfig: v1beta1.EnvoyConfig{
+			Image: "envoyproxy/envoy:v1.14.4",
+			Resources: &corev1.ResourceRequirements{
+				Limits: corev1.ResourceList{
+					"cpu":    resource.MustParse("100m"),
+					"memory": resource.MustParse("100Mi"),
+				},
+				Requests: corev1.ResourceList{
+					"cpu":    resource.MustParse("100m"),
+					"memory": resource.MustParse("100Mi"),
+				},
 			},
-			Requests: corev1.ResourceList{
-				"cpu":    resource.MustParse("100m"),
-				"memory": resource.MustParse("100Mi"),
-			},
+			Replicas:           1,
+			ServiceAccountName: "default",
 		},
-		Replicas:                 1,
-		ServiceAccountName:       "default",
 	}
 	testCases := []struct {
-		globalConfig                     v1beta1.EnvoyConfig
+		globalConfig                     v1beta1.KafkaClusterSpec
 		externalListenerSpecifiedConfigs v1beta1.ExternalListenerConfig
 		expectedOutput                   map[string]v1beta1.IngressConfig
 	}{
 		// only global configuration is set
 		{
-			*defaultEnvoyConfig,
+			*defaultKafkaCluster,
 			v1beta1.ExternalListenerConfig{
-				CommonListenerSpec:   v1beta1.CommonListenerSpec{
+				CommonListenerSpec: v1beta1.CommonListenerSpec{
 					Type:          "plaintext",
 					Name:          "external",
 					ContainerPort: 9094,
@@ -689,23 +691,23 @@ func TestGetEnvoyIngressConfigs(t *testing.T) {
 				ExternalStartingPort: 19090,
 			},
 			map[string]v1beta1.IngressConfig{
-				IngressConfigGlobalName: {EnvoyConfig: defaultEnvoyConfig},
+				IngressConfigGlobalName: {EnvoyConfig: &defaultKafkaCluster.EnvoyConfig},
 			},
 		},
 		//// ExternalListener Specified config is set
 		{
-			*defaultEnvoyConfig,
+			*defaultKafkaCluster,
 			v1beta1.ExternalListenerConfig{
-				CommonListenerSpec:   v1beta1.CommonListenerSpec{
+				CommonListenerSpec: v1beta1.CommonListenerSpec{
 					Type:          "plaintext",
 					Name:          "external",
 					ContainerPort: 9094,
 				},
 				ExternalStartingPort: 19090,
 				Config: &v1beta1.Config{
-					IngressConfig:          map[string]v1beta1.IngressConfig{
+					IngressConfig: map[string]v1beta1.IngressConfig{
 						"az1": {
-							LoadBalancerSettings: v1beta1.LoadBalancerSettings{
+							IngressServiceSettings: v1beta1.IngressServiceSettings{
 								HostnameOverride: "foo.bar",
 							},
 							EnvoyConfig: &v1beta1.EnvoyConfig{
@@ -715,7 +717,7 @@ func TestGetEnvoyIngressConfigs(t *testing.T) {
 						},
 						"az2": {
 							EnvoyConfig: &v1beta1.EnvoyConfig{
-								Image: "envoyproxy/envoy:v1.15.4",
+								Image:       "envoyproxy/envoy:v1.15.4",
 								Annotations: map[string]string{"az2": "region"},
 							},
 						},
@@ -724,12 +726,12 @@ func TestGetEnvoyIngressConfigs(t *testing.T) {
 			},
 			map[string]v1beta1.IngressConfig{
 				"az1": {
-					LoadBalancerSettings: v1beta1.LoadBalancerSettings{
+					IngressServiceSettings: v1beta1.IngressServiceSettings{
 						HostnameOverride: "foo.bar",
 					},
 					EnvoyConfig: &v1beta1.EnvoyConfig{
-						Image:                    "envoyproxy/envoy:v1.14.4",
-						Resources:                &corev1.ResourceRequirements{
+						Image: "envoyproxy/envoy:v1.14.4",
+						Resources: &corev1.ResourceRequirements{
 							Limits: corev1.ResourceList{
 								"cpu":    resource.MustParse("100m"),
 								"memory": resource.MustParse("100Mi"),
@@ -739,15 +741,15 @@ func TestGetEnvoyIngressConfigs(t *testing.T) {
 								"memory": resource.MustParse("100Mi"),
 							},
 						},
-						Replicas:                 3,
-						Annotations: map[string]string{"az1": "region"},
-						ServiceAccountName:       "default",
+						Replicas:           3,
+						Annotations:        map[string]string{"az1": "region"},
+						ServiceAccountName: "default",
 					},
 				},
 				"az2": {
 					EnvoyConfig: &v1beta1.EnvoyConfig{
-						Image:                    "envoyproxy/envoy:v1.15.4",
-						Resources:                &corev1.ResourceRequirements{
+						Image: "envoyproxy/envoy:v1.15.4",
+						Resources: &corev1.ResourceRequirements{
 							Limits: corev1.ResourceList{
 								"cpu":    resource.MustParse("100m"),
 								"memory": resource.MustParse("100Mi"),
@@ -757,137 +759,21 @@ func TestGetEnvoyIngressConfigs(t *testing.T) {
 								"memory": resource.MustParse("100Mi"),
 							},
 						},
-						Annotations: map[string]string{"az2": "region"},
-						Replicas:                 1,
-						ServiceAccountName:       "default",
+						Annotations:        map[string]string{"az2": "region"},
+						Replicas:           1,
+						ServiceAccountName: "default",
 					},
 				},
 			},
 		},
 	}
 	for _, testCase := range testCases {
-		envoyConfigs, err := GetEnvoyIngressConfigs(testCase.globalConfig, testCase.externalListenerSpecifiedConfigs)
+		envoyConfigs, err := GetIngressConfigs(testCase.globalConfig, testCase.externalListenerSpecifiedConfigs)
 		if err != nil {
 			t.Errorf("unexpected error occured during merging envoyconfigs")
 		}
 		if len(envoyConfigs) != len(testCase.expectedOutput) {
 			t.Errorf("size of the merged slice of envoyConfig mismatch - expected: %d, actual: %d", len(testCase.expectedOutput), len(envoyConfigs))
-		}
-		for i, envoyConfig := range envoyConfigs {
-			assert.DeepEqual(t, envoyConfig, testCase.expectedOutput[i])
-		}
-	}
-}
-
-func TestGetIstioIngressConfigs(t *testing.T) {
-	defaultIstioIngressConfig := &v1beta1.IstioIngressConfig{
-		Resources:                &corev1.ResourceRequirements{
-			Limits: corev1.ResourceList{
-				"cpu":    resource.MustParse("100m"),
-				"memory": resource.MustParse("100Mi"),
-			},
-			Requests: corev1.ResourceList{
-				"cpu":    resource.MustParse("100m"),
-				"memory": resource.MustParse("100Mi"),
-			},
-		},
-		Replicas:                 1,
-	}
-	testCases := []struct {
-		globalConfig                     v1beta1.IstioIngressConfig
-		externalListenerSpecifiedConfigs v1beta1.ExternalListenerConfig
-		expectedOutput                   map[string]v1beta1.IngressConfig
-	}{
-		// only global configuration is set
-		{
-			*defaultIstioIngressConfig,
-			v1beta1.ExternalListenerConfig{
-				CommonListenerSpec:   v1beta1.CommonListenerSpec{
-					Type:          "plaintext",
-					Name:          "external",
-					ContainerPort: 9094,
-				},
-				ExternalStartingPort: 19090,
-			},
-			map[string]v1beta1.IngressConfig{
-				IngressConfigGlobalName: {IstioIngressConfig: defaultIstioIngressConfig},
-			},
-		},
-		//// ExternalListener Specified config is set
-		{
-			*defaultIstioIngressConfig,
-			v1beta1.ExternalListenerConfig{
-				CommonListenerSpec:   v1beta1.CommonListenerSpec{
-					Type:          "plaintext",
-					Name:          "external",
-					ContainerPort: 9094,
-				},
-				ExternalStartingPort: 19090,
-				Config: &v1beta1.Config{
-					IngressConfig:          map[string]v1beta1.IngressConfig{
-						"az1": {
-							LoadBalancerSettings: v1beta1.LoadBalancerSettings{
-								HostnameOverride: "foo.bar",
-							},
-							IstioIngressConfig: &v1beta1.IstioIngressConfig{
-								Replicas:    3,
-								Annotations: map[string]string{"az1": "region"},
-							},
-						},
-						"az2": {
-							IstioIngressConfig: &v1beta1.IstioIngressConfig{
-								Annotations: map[string]string{"az2": "region"},
-							},
-						},
-					},
-				},
-			},
-			map[string]v1beta1.IngressConfig{
-				"az1": {
-					LoadBalancerSettings: v1beta1.LoadBalancerSettings{
-						HostnameOverride: "foo.bar",
-					},
-					IstioIngressConfig: &v1beta1.IstioIngressConfig{
-						Resources:                &corev1.ResourceRequirements{
-							Limits: corev1.ResourceList{
-								"cpu":    resource.MustParse("100m"),
-								"memory": resource.MustParse("100Mi"),
-							},
-							Requests: corev1.ResourceList{
-								"cpu":    resource.MustParse("100m"),
-								"memory": resource.MustParse("100Mi"),
-							},
-						},
-						Replicas:                 3,
-						Annotations: map[string]string{"az1": "region"},
-					},
-				},
-				"az2": {
-					IstioIngressConfig: &v1beta1.IstioIngressConfig{
-						Resources:                &corev1.ResourceRequirements{
-							Limits: corev1.ResourceList{
-								"cpu":    resource.MustParse("100m"),
-								"memory": resource.MustParse("100Mi"),
-							},
-							Requests: corev1.ResourceList{
-								"cpu":    resource.MustParse("100m"),
-								"memory": resource.MustParse("100Mi"),
-							},
-						},
-						Annotations: map[string]string{"az2": "region"},
-						Replicas:                 1,
-					},
-				},
-			},
-		},
-	}
-	for _, testCase := range testCases {
-		envoyConfigs, err := GetIstioIngressConfigs(testCase.globalConfig, testCase.externalListenerSpecifiedConfigs)
-		if err != nil {
-			t.Errorf("unexpected error occured during merging envoyconfigs")
-		}
-		if len(envoyConfigs) != len(testCase.expectedOutput) {
-			t.Errorf("size of the merged slice of istioIngressConfig mismatch - expected: %d, actual: %d", len(testCase.expectedOutput), len(envoyConfigs))
 		}
 		for i, envoyConfig := range envoyConfigs {
 			assert.DeepEqual(t, envoyConfig, testCase.expectedOutput[i])

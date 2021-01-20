@@ -36,7 +36,7 @@ func (r *Reconciler) service(id int32, brokerConfig *v1beta1.BrokerConfig) runti
 		generateServicePortForIListeners(r.KafkaCluster.Spec.ListenersConfig.InternalListeners)...)
 	// Append external listener ports
 	usedPorts = append(usedPorts,
-		generateServicePortForEListenersWithBinding(r.KafkaCluster.Spec.ListenersConfig.ExternalListeners, brokerConfig)...)
+		generateServicePortForEListeners(r.KafkaCluster.Spec.ListenersConfig.ExternalListeners)...)
 
 	usedPorts = append(usedPorts, corev1.ServicePort{
 		Name:       "metrics",

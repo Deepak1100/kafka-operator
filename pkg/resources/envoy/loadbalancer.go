@@ -39,7 +39,7 @@ func (r *Reconciler) loadBalancer(log logr.Logger, extListener v1beta1.ExternalL
 	if ingressConfigName == util.IngressConfigGlobalName {
 		serviceName = fmt.Sprintf(envoyutils.EnvoyServiceName, extListener.Name, r.KafkaCluster.GetName())
 	} else {
-		serviceName = fmt.Sprintf(envoyutils.EnvoyServiceNameWithScope, extListener.Name, ingressConfigName,r.KafkaCluster.GetName())
+		serviceName = fmt.Sprintf(envoyutils.EnvoyServiceNameWithScope, extListener.Name, ingressConfigName, r.KafkaCluster.GetName())
 	}
 
 	exposedPorts := getExposedServicePorts(extListener,
@@ -64,7 +64,7 @@ func (r *Reconciler) loadBalancer(log logr.Logger, extListener v1beta1.ExternalL
 }
 
 func getExposedServicePorts(extListener v1beta1.ExternalListenerConfig, brokersIds []int,
-	kafkaClusterSpec v1beta1.KafkaClusterSpec, ingressConfigName string,log logr.Logger) []corev1.ServicePort {
+	kafkaClusterSpec v1beta1.KafkaClusterSpec, ingressConfigName string, log logr.Logger) []corev1.ServicePort {
 	var exposedPorts []corev1.ServicePort
 	for _, brokerId := range brokersIds {
 		brokerConfig, err := util.GetBrokerConfig(kafkaClusterSpec.Brokers[brokerId], kafkaClusterSpec)
@@ -72,7 +72,7 @@ func getExposedServicePorts(extListener v1beta1.ExternalListenerConfig, brokersI
 			log.Error(err, "could not determine brokerConfig")
 		}
 		if len(brokerConfig.BrokerIdBindings) == 0 ||
-			util.StringSliceContains(brokerConfig.BrokerIdBindings, ingressConfigName){
+			util.StringSliceContains(brokerConfig.BrokerIdBindings, ingressConfigName) {
 
 			exposedPorts = append(exposedPorts, corev1.ServicePort{
 				Name:       fmt.Sprintf("broker-%d", brokerId),

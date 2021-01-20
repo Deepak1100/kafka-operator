@@ -30,11 +30,11 @@ import (
 const (
 	componentName = "envoy"
 	// The deployment and configmap name should made from the external listener name the cluster name to avoid all naming collision
-	envoyVolumeAndConfigName = "envoy-config-%s-%s"
+	envoyVolumeAndConfigName          = "envoy-config-%s-%s"
 	envoyVolumeAndConfigNameWithScope = "envoy-config-%s-%s-%s"
-	envoyDeploymentName      = "envoy-%s-%s"
+	envoyDeploymentName               = "envoy-%s-%s"
 	envoyDeploymentNameWithScope      = "envoy-%s-%s-%s"
-	allBrokerEnvoyConfigName = "all-brokers"
+	allBrokerEnvoyConfigName          = "all-brokers"
 )
 
 // labelsForEnvoyIngress returns the labels for selecting the resources
@@ -68,7 +68,7 @@ func (r *Reconciler) Reconcile(log logr.Logger) error {
 
 		for _, eListener := range r.KafkaCluster.Spec.ListenersConfig.ExternalListeners {
 			if eListener.GetAccessMethod() == corev1.ServiceTypeLoadBalancer {
-				ingressConfigs ,err := util.GetEnvoyIngressConfigs(r.KafkaCluster.Spec.EnvoyConfig, eListener)
+				ingressConfigs, err := util.GetIngressConfigs(r.KafkaCluster.Spec, eListener)
 				if err != nil {
 					return err
 				}

@@ -27,11 +27,11 @@ import (
 )
 
 const (
-	componentName          = "istioingress"
-	gatewayNameTemplate    = "%s-%s-gateway"
-	gatewayNameTemplateWithScope = "%s-%s-%sgateway"
-	virtualServiceTemplate = "%s-%s-virtualservice"
-	virtualServiceTemplateWithScope = "%s-%s-%svirtualservice"
+	componentName                   = "istioingress"
+	gatewayNameTemplate             = "%s-%s-gateway"
+	gatewayNameTemplateWithScope    = "%s-%s-%s-gateway"
+	virtualServiceTemplate          = "%s-%s-virtualservice"
+	virtualServiceTemplateWithScope = "%s-%s-%s-virtualservice"
 )
 
 // labelsForIstioIngress returns the labels for selecting the resources
@@ -65,7 +65,7 @@ func (r *Reconciler) Reconcile(log logr.Logger) error {
 		for _, eListener := range r.KafkaCluster.Spec.ListenersConfig.ExternalListeners {
 			if eListener.GetAccessMethod() == corev1.ServiceTypeLoadBalancer {
 
-				ingressConfigs, err := util.GetIstioIngressConfigs(r.KafkaCluster.Spec.IstioIngressConfig, eListener)
+				ingressConfigs, err := util.GetIngressConfigs(r.KafkaCluster.Spec, eListener)
 				if err != nil {
 					return err
 				}
