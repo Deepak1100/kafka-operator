@@ -210,29 +210,31 @@ func GetBrokerIdsFromStatusAndSpec(brokerStatuses map[string]v1beta1.BrokerState
 	return brokerIds
 }
 
-//// IsIngressConfigInUse returns true if the provided ingressConfig name is bound to the given broker
-//func IsIngressConfigInUse(iConfigName string, brokerConfig *v1beta1.BrokerConfig,
-//	iConfigs map[string]v1beta1.IngressConfig) bool {
-//
-//	// Fall back to the default external listener access point which
-//	// is the alphabetical first one on the ingressConfig map
-//	if len(brokerConfig.BrokerIdBindings) == 0 && len(iConfigs) != 0 {
-//		sortedConfigs := make([]string, len(iConfigs), 0)
-//		for name := range iConfigs {
-//			sortedConfigs = append(sortedConfigs, name)
-//		}
-//		if sortedConfigs[0] == iConfigName {
-//			return true
-//		}
-//		return false
-//	}
-//
-//	if len(brokerConfig.BrokerIdBindings) == 0 ||
-//		StringSliceContains(brokerConfig.BrokerIdBindings, iConfigName){
-//		return true
-//	}
-//	return false
-//}
+// IsIngressConfigInUse returns true if the provided ingressConfig name is bound to the given broker
+func IsIngressConfigInUse(iConfigName string, clusterSpec v1beta1.KafkaClusterSpec,
+	ingressConfigs map[string]v1beta1.IngressConfig, log logr.Logger) bool {
+	for _, broker := range clusterSpec.Brokers {
+		brokerConfig, err := GetBrokerConfig(broker, clusterSpec)
+		if err != nil {
+			log.Error(err, "could not determine if ingressConfig is in use")
+			return false
+		}
+		if StringSliceContains(brokerConfig.BrokerIdBindings, iConfigName) {
+			return true
+		}
+	}
+	// If we are here it means no brokerId binding specified for this iConfigName
+	// Check if this config name is the default one
+	sortedConfigs := make([]string, 0, len(ingressConfigs))
+	for name := range ingressConfigs {
+		sortedConfigs = append(sortedConfigs, name)
+	}
+	sort.Strings(sortedConfigs)
+	if sortedConfigs[0] == iConfigName {
+		return true
+	}
+	return false
+}
 
 // GetIngressConfigs compose the ingress configuration for a given externalListener
 func GetIngressConfigs(kafkaClusterSpec v1beta1.KafkaClusterSpec,

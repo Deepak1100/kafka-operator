@@ -178,7 +178,7 @@ func (r *Reconciler) Reconcile(log logr.Logger) error {
 		return errors.WrapIf(err, "failed to reconcile resource")
 	}
 
-	extListenerStatuses, err := r.createExternalListenerStatuses()
+	extListenerStatuses, err := r.createExternalListenerStatuses(log)
 	if err != nil {
 		return errors.WrapIf(err, "could not update status for external listeners")
 	}
@@ -785,7 +785,7 @@ func isDesiredStorageValueInvalid(desired, current *corev1.PersistentVolumeClaim
 	return desired.Spec.Resources.Requests.Storage().Value() < current.Spec.Resources.Requests.Storage().Value()
 }
 
-func (r *Reconciler) createExternalListenerStatuses() (map[string]v1beta1.ListenerStatusList, error) {
+func (r *Reconciler) createExternalListenerStatuses(log logr.Logger) (map[string]v1beta1.ListenerStatusList, error) {
 	extListenerStatuses := make(map[string]v1beta1.ListenerStatusList, len(r.KafkaCluster.Spec.ListenersConfig.ExternalListeners))
 	for _, eListener := range r.KafkaCluster.Spec.ListenersConfig.ExternalListeners {
 		var host string
@@ -797,6 +797,9 @@ func (r *Reconciler) createExternalListenerStatuses() (map[string]v1beta1.Listen
 		}
 		listenerStatusList := make(v1beta1.ListenerStatusList, 0, len(r.KafkaCluster.Spec.Brokers)+1)
 		for iConfigName, iConfig := range ingressConfigs {
+			if !util.IsIngressConfigInUse(iConfigName, r.KafkaCluster.Spec, ingressConfigs, log) {
+				continue
+			}
 			if iConfig.HostnameOverride != "" {
 				host = eListener.HostnameOverride
 			} else if eListener.GetAccessMethod() == corev1.ServiceTypeLoadBalancer {

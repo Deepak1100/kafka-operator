@@ -70,6 +70,9 @@ func (r *Reconciler) Reconcile(log logr.Logger) error {
 					return err
 				}
 				for name, ingressConfig := range ingressConfigs {
+					if !util.IsIngressConfigInUse(name, r.KafkaCluster.Spec, ingressConfigs, log) {
+						continue
+					}
 					for _, res := range []resources.ResourceWithLogAndExternalListenerConfigAndIngressConfigWithName{
 						r.meshgateway,
 						r.gateway,
