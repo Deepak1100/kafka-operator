@@ -52,7 +52,7 @@ func (r *Reconciler) meshgateway(log logr.Logger, externalListenerConfig v1beta1
 						PodAnnotations: ingressConfig.IstioIngressConfig.Annotations,
 					},
 				},
-				ServiceType: corev1.ServiceTypeLoadBalancer,
+				ServiceType: externalListenerConfig.GetServiceType(),
 			},
 			Ports: generateExternalPorts(r.KafkaCluster.Spec,
 				util.GetBrokerIdsFromStatusAndSpec(r.KafkaCluster.Status.BrokersState, r.KafkaCluster.Spec.Brokers, log),
@@ -72,6 +72,7 @@ func generateExternalPorts(kc v1beta1.KafkaClusterSpec, brokerIds []int,
 		brokerConfig, err := util.GetBrokerConfig(kc.Brokers[brokerId], kc)
 		if err != nil {
 			log.Error(err, "could not determine brokerConfig")
+			continue
 		}
 		if len(brokerConfig.BrokerIdBindings) == 0 ||
 			util.StringSliceContains(brokerConfig.BrokerIdBindings, ingressConfigName) {

@@ -114,6 +114,7 @@ func getExposedContainerPorts(extListener v1beta1.ExternalListenerConfig, broker
 		brokerConfig, err := util.GetBrokerConfig(kafkaClusterSpec.Brokers[id], kafkaClusterSpec)
 		if err != nil {
 			log.Error(err, "could not generate envoy ingress deployment")
+			continue
 		}
 		if len(brokerConfig.BrokerIdBindings) == 0 ||
 			util.StringSliceContains(brokerConfig.BrokerIdBindings, ingressConfigName) {

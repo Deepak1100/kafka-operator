@@ -5959,6 +5959,11 @@ spec:
                                     which will be placed to the service or services
                                     created for the external listener
                                   type: object
+                                serviceType:
+                                  description: Service Type string describes ingress
+                                    methods for a service Only "NodePort" and "LoadBalancer"
+                                    is supported. Default value is LoadBalancer
+                                  type: string
                               type: object
                             type: object
                         required:
@@ -5999,6 +6004,11 @@ spec:
                           will be placed to the service or services created for the
                           external listener
                         type: object
+                      serviceType:
+                        description: Service Type string describes ingress methods
+                          for a service Only "NodePort" and "LoadBalancer" is supported.
+                          Default value is LoadBalancer
+                        type: string
                       type:
                         type: string
                     required:

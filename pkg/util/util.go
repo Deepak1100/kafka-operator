@@ -245,12 +245,12 @@ func GetIngressConfigs(kafkaClusterSpec v1beta1.KafkaClusterSpec,
 				if iConf.EnvoyConfig != nil {
 					err := mergo.Merge(iConf.EnvoyConfig, kafkaClusterSpec.EnvoyConfig)
 					if err != nil {
-						return nil, "",errors.WrapWithDetails(err,
+						return nil, "", errors.WrapWithDetails(err,
 							"could not merge global envoy config with local one", "envoyConfig", k)
 					}
 					err = mergo.Merge(&iConf.IngressServiceSettings, eListenerConfig.IngressServiceSettings)
 					if err != nil {
-						return nil, "",errors.WrapWithDetails(err,
+						return nil, "", errors.WrapWithDetails(err,
 							"could not merge global loadbalancer config with local one",
 							"externalListenerName", eListenerConfig.Name)
 					}

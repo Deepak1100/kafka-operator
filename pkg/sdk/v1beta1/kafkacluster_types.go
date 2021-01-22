@@ -296,6 +296,14 @@ func (c IngressServiceSettings) GetServiceAnnotations() map[string]string {
 	return annotations
 }
 
+// GetServiceType returns the field value of ServiceType defaults to LoadBalancer.
+func (c IngressServiceSettings) GetServiceType() corev1.ServiceType {
+	if c.ServiceType == "" {
+		return corev1.ServiceTypeLoadBalancer
+	}
+	return c.ServiceType
+}
+
 // SSLSecrets defines the Kafka SSL secrets
 type SSLSecrets struct {
 	TLSSecretName   string                  `json:"tlsSecretName"`
@@ -349,6 +357,10 @@ type IngressServiceSettings struct {
 	// another node, but should have good overall load-spreading.
 	// +optional
 	ExternalTrafficPolicy corev1.ServiceExternalTrafficPolicyType `json:"externalTrafficPolicy,omitempty"`
+	// Service Type string describes ingress methods for a service
+	// Only "NodePort" and "LoadBalancer" is supported.
+	// Default value is LoadBalancer
+	ServiceType corev1.ServiceType `json:"serviceType,omitempty"`
 }
 
 // ExternalListenerConfig defines the external listener config for Kafka
@@ -372,7 +384,7 @@ type ExternalListenerConfig struct {
 
 // Config defines the external access ingress controller configuration
 type Config struct {
-	DefaultIngressConfig string `json:"defaultIngressConfig"`
+	DefaultIngressConfig string                   `json:"defaultIngressConfig"`
 	IngressConfig        map[string]IngressConfig `json:"ingressConfig,omitempty"`
 }
 

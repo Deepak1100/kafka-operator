@@ -72,6 +72,7 @@ func generateTlsRoutes(kc *v1beta1.KafkaCluster, externalListenerConfig v1beta1.
 		brokerConfig, err := util.GetBrokerConfig(kc.Spec.Brokers[brokerId], kc.Spec)
 		if err != nil {
 			log.Error(err, "could not determine brokerConfig")
+			continue
 		}
 		if len(brokerConfig.BrokerIdBindings) == 0 ||
 			util.StringSliceContains(brokerConfig.BrokerIdBindings, ingressConfigName) {
@@ -126,6 +127,7 @@ func generateTcpRoutes(kc *v1beta1.KafkaCluster, externalListenerConfig v1beta1.
 		brokerConfig, err := util.GetBrokerConfig(kc.Spec.Brokers[brokerId], kc.Spec)
 		if err != nil {
 			log.Error(err, "could not determine brokerConfig")
+			continue
 		}
 		if len(brokerConfig.BrokerIdBindings) == 0 ||
 			util.StringSliceContains(brokerConfig.BrokerIdBindings, ingressConfigName) {

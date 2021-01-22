@@ -30,8 +30,8 @@ import (
 	kafkautils "github.com/banzaicloud/kafka-operator/pkg/util/kafka"
 )
 
-// loadBalancer return a Loadbalancer service for Envoy
-func (r *Reconciler) loadBalancer(log logr.Logger, extListener v1beta1.ExternalListenerConfig,
+// service return a external facing service for Envoy
+func (r *Reconciler) service(log logr.Logger, extListener v1beta1.ExternalListenerConfig,
 	ingressConfig v1beta1.IngressConfig, ingressConfigName string) runtime.Object {
 
 	// Determine Service Name from the configuration
@@ -53,7 +53,7 @@ func (r *Reconciler) loadBalancer(log logr.Logger, extListener v1beta1.ExternalL
 			ingressConfig.IngressServiceSettings.GetServiceAnnotations(), r.KafkaCluster),
 		Spec: corev1.ServiceSpec{
 			Selector:                 labelsForEnvoyIngress(r.KafkaCluster.GetName(), extListener.Name),
-			Type:                     corev1.ServiceTypeLoadBalancer,
+			Type:                     extListener.GetServiceType(),
 			Ports:                    exposedPorts,
 			LoadBalancerSourceRanges: ingressConfig.EnvoyConfig.GetLoadBalancerSourceRanges(),
 			LoadBalancerIP:           ingressConfig.EnvoyConfig.LoadBalancerIP,
@@ -70,6 +70,7 @@ func getExposedServicePorts(extListener v1beta1.ExternalListenerConfig, brokersI
 		brokerConfig, err := util.GetBrokerConfig(kafkaClusterSpec.Brokers[brokerId], kafkaClusterSpec)
 		if err != nil {
 			log.Error(err, "could not determine brokerConfig")
+			continue
 		}
 		if len(brokerConfig.BrokerIdBindings) == 0 ||
 			util.StringSliceContains(brokerConfig.BrokerIdBindings, ingressConfigName) {

@@ -62,6 +62,7 @@ func generateServers(kc *v1beta1.KafkaCluster, externalListenerConfig v1beta1.Ex
 		brokerConfig, err := util.GetBrokerConfig(kc.Spec.Brokers[brokerId], kc.Spec)
 		if err != nil {
 			log.Error(err, "could not determine brokerConfig")
+			continue
 		}
 		if len(brokerConfig.BrokerIdBindings) == 0 ||
 			util.StringSliceContains(brokerConfig.BrokerIdBindings, ingressConfigName) {

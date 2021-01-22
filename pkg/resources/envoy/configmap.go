@@ -95,6 +95,7 @@ func GenerateEnvoyConfig(kc *v1beta1.KafkaCluster, elistener v1beta1.ExternalLis
 		brokerConfig, err := util.GetBrokerConfig(kc.Spec.Brokers[brokerId], kc.Spec)
 		if err != nil {
 			log.Error(err, "could not generate envoy ingress config")
+			continue
 		}
 		if len(brokerConfig.BrokerIdBindings) == 0 || util.StringSliceContains(brokerConfig.BrokerIdBindings, ingressConfigName) {
 			listeners = append(listeners, &envoyapi.Listener{
