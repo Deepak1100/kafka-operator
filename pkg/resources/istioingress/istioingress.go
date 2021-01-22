@@ -65,12 +65,12 @@ func (r *Reconciler) Reconcile(log logr.Logger) error {
 		for _, eListener := range r.KafkaCluster.Spec.ListenersConfig.ExternalListeners {
 			if eListener.GetAccessMethod() == corev1.ServiceTypeLoadBalancer {
 
-				ingressConfigs, err := util.GetIngressConfigs(r.KafkaCluster.Spec, eListener)
+				ingressConfigs, defaultControllerName, err := util.GetIngressConfigs(r.KafkaCluster.Spec, eListener)
 				if err != nil {
 					return err
 				}
 				for name, ingressConfig := range ingressConfigs {
-					if !util.IsIngressConfigInUse(name, r.KafkaCluster.Spec, ingressConfigs, log) {
+					if !util.IsIngressConfigInUse(name, r.KafkaCluster.Spec, log) && name != defaultControllerName {
 						continue
 					}
 					for _, res := range []resources.ResourceWithLogAndExternalListenerConfigAndIngressConfigWithName{

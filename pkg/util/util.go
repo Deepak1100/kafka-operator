@@ -210,9 +210,13 @@ func GetBrokerIdsFromStatusAndSpec(brokerStatuses map[string]v1beta1.BrokerState
 	return brokerIds
 }
 
-// IsIngressConfigInUse returns true if the provided ingressConfig name is bound to the given broker
-func IsIngressConfigInUse(iConfigName string, clusterSpec v1beta1.KafkaClusterSpec,
-	ingressConfigs map[string]v1beta1.IngressConfig, log logr.Logger) bool {
+// IsIngressConfigInUse returns true if the provided ingressConfigName is bound to the given broker
+func IsIngressConfigInUse(iConfigName string, clusterSpec v1beta1.KafkaClusterSpec, log logr.Logger) bool {
+	// Check if the global default is in use
+	if iConfigName == IngressConfigGlobalName {
+		return true
+	}
+	// Check if the given iConfigName is bound to a given broker
 	for _, broker := range clusterSpec.Brokers {
 		brokerConfig, err := GetBrokerConfig(broker, clusterSpec)
 		if err != nil {
@@ -223,38 +227,30 @@ func IsIngressConfigInUse(iConfigName string, clusterSpec v1beta1.KafkaClusterSp
 			return true
 		}
 	}
-	// If we are here it means no brokerId binding specified for this iConfigName
-	// Check if this config name is the default one
-	sortedConfigs := make([]string, 0, len(ingressConfigs))
-	for name := range ingressConfigs {
-		sortedConfigs = append(sortedConfigs, name)
-	}
-	sort.Strings(sortedConfigs)
-	if sortedConfigs[0] == iConfigName {
-		return true
-	}
 	return false
 }
 
 // GetIngressConfigs compose the ingress configuration for a given externalListener
 func GetIngressConfigs(kafkaClusterSpec v1beta1.KafkaClusterSpec,
-	eListenerConfig v1beta1.ExternalListenerConfig) (map[string]v1beta1.IngressConfig, error) {
+	eListenerConfig v1beta1.ExternalListenerConfig) (map[string]v1beta1.IngressConfig, string, error) {
 	var ingressConfigs map[string]v1beta1.IngressConfig
+	var defaultIngressConfigName string
 	// Merge specific external listener configuration with the global one if none specified
 	switch kafkaClusterSpec.GetIngressController() {
 	case envoyutils.IngressControllerName:
 		if eListenerConfig.Config != nil {
+			defaultIngressConfigName = eListenerConfig.Config.DefaultIngressConfig
 			ingressConfigs = make(map[string]v1beta1.IngressConfig, len(eListenerConfig.Config.IngressConfig))
 			for k, iConf := range eListenerConfig.Config.IngressConfig {
 				if iConf.EnvoyConfig != nil {
 					err := mergo.Merge(iConf.EnvoyConfig, kafkaClusterSpec.EnvoyConfig)
 					if err != nil {
-						return nil, errors.WrapWithDetails(err,
+						return nil, "",errors.WrapWithDetails(err,
 							"could not merge global envoy config with local one", "envoyConfig", k)
 					}
 					err = mergo.Merge(&iConf.IngressServiceSettings, eListenerConfig.IngressServiceSettings)
 					if err != nil {
-						return nil, errors.WrapWithDetails(err,
+						return nil, "",errors.WrapWithDetails(err,
 							"could not merge global loadbalancer config with local one",
 							"externalListenerName", eListenerConfig.Name)
 					}
@@ -271,17 +267,18 @@ func GetIngressConfigs(kafkaClusterSpec v1beta1.KafkaClusterSpec,
 		}
 	case istioingress.IngressControllerName:
 		if eListenerConfig.Config != nil {
+			defaultIngressConfigName = eListenerConfig.Config.DefaultIngressConfig
 			ingressConfigs = make(map[string]v1beta1.IngressConfig, len(eListenerConfig.Config.IngressConfig))
 			for k, iConf := range eListenerConfig.Config.IngressConfig {
 				if iConf.IstioIngressConfig != nil {
 					err := mergo.Merge(iConf.IstioIngressConfig, kafkaClusterSpec.IstioIngressConfig)
 					if err != nil {
-						return nil, errors.WrapWithDetails(err,
+						return nil, "", errors.WrapWithDetails(err,
 							"could not merge global istio config with local one", "istioConfig", k)
 					}
 					err = mergo.Merge(&iConf.IngressServiceSettings, eListenerConfig.IngressServiceSettings)
 					if err != nil {
-						return nil, errors.WrapWithDetails(err,
+						return nil, "", errors.WrapWithDetails(err,
 							"could not merge global loadbalancer config with local one",
 							"externalListenerName", eListenerConfig.Name)
 					}
@@ -297,9 +294,9 @@ func GetIngressConfigs(kafkaClusterSpec v1beta1.KafkaClusterSpec,
 			}
 		}
 	default:
-		return nil, errors.NewWithDetails("not supported ingress type", "name", kafkaClusterSpec.GetIngressController())
+		return nil, "", errors.NewWithDetails("not supported ingress type", "name", kafkaClusterSpec.GetIngressController())
 	}
-	return ingressConfigs, nil
+	return ingressConfigs, defaultIngressConfigName, nil
 }
 
 // GetBrokerConfig compose the brokerConfig for a given broker

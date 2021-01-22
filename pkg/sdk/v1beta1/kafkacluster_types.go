@@ -372,7 +372,8 @@ type ExternalListenerConfig struct {
 
 // Config defines the external access ingress controller configuration
 type Config struct {
-	IngressConfig map[string]IngressConfig `json:"ingressConfig,omitempty"`
+	DefaultIngressConfig string `json:"defaultIngressConfig"`
+	IngressConfig        map[string]IngressConfig `json:"ingressConfig,omitempty"`
 }
 
 type IngressConfig struct {

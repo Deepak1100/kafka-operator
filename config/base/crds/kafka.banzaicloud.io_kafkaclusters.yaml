@@ -5592,6 +5592,8 @@ spec:
                           the default IstioIngressConfig or EnvoyConfig will be used
                           from the KafkaClusterSpec
                         properties:
+                          defaultIngressConfig:
+                            type: string
                           ingressConfig:
                             additionalProperties:
                               properties:
@@ -5959,6 +5961,8 @@ spec:
                                   type: object
                               type: object
                             type: object
+                        required:
+                        - defaultIngressConfig
                         type: object
                       containerPort:
                         format: int32

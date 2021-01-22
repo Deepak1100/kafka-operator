@@ -791,13 +791,13 @@ func (r *Reconciler) createExternalListenerStatuses(log logr.Logger) (map[string
 		var host string
 		var foundLBService *corev1.Service
 		var err error
-		ingressConfigs, err := util.GetIngressConfigs(r.KafkaCluster.Spec, eListener)
+		ingressConfigs, defaultControllerName, err := util.GetIngressConfigs(r.KafkaCluster.Spec, eListener)
 		if err != nil {
 			return nil, err
 		}
 		listenerStatusList := make(v1beta1.ListenerStatusList, 0, len(r.KafkaCluster.Spec.Brokers)+1)
 		for iConfigName, iConfig := range ingressConfigs {
-			if !util.IsIngressConfigInUse(iConfigName, r.KafkaCluster.Spec, ingressConfigs, log) {
+			if !util.IsIngressConfigInUse(iConfigName, r.KafkaCluster.Spec, log) && iConfigName != defaultControllerName{
 				continue
 			}
 			if iConfig.HostnameOverride != "" {
