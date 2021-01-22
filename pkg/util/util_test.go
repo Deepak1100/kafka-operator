@@ -19,6 +19,8 @@ import (
 	"testing"
 
 	"github.com/banzaicloud/kafka-operator/api/v1beta1"
+	"github.com/banzaicloud/kafka-operator/pkg/util/istioingress"
+
 	"gotest.tools/assert"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -656,8 +658,8 @@ func TestGetBrokerIdsFromStatusAndSpec(t *testing.T) {
 		}
 	}
 }
-func TestGetEnvoyIngressConfigs(t *testing.T) {
-	defaultKafkaCluster := &v1beta1.KafkaClusterSpec{
+func TestGetIngressConfigs(t *testing.T) {
+	defaultKafkaClusterWithEnvoy := &v1beta1.KafkaClusterSpec{
 		EnvoyConfig: v1beta1.EnvoyConfig{
 			Image: "envoyproxy/envoy:v1.14.4",
 			Resources: &corev1.ResourceRequirements{
@@ -674,14 +676,33 @@ func TestGetEnvoyIngressConfigs(t *testing.T) {
 			ServiceAccountName: "default",
 		},
 	}
+
+	defaultKafkaClusterWithIstioIngress := &v1beta1.KafkaClusterSpec{
+		IngressController: istioingress.IngressControllerName,
+		IstioIngressConfig: v1beta1.IstioIngressConfig{
+			Resources: &corev1.ResourceRequirements{
+				Limits: corev1.ResourceList{
+					"cpu":    resource.MustParse("100m"),
+					"memory": resource.MustParse("100Mi"),
+				},
+				Requests: corev1.ResourceList{
+					"cpu":    resource.MustParse("100m"),
+					"memory": resource.MustParse("100Mi"),
+				},
+			},
+			Replicas:           1,
+		},
+	}
+
+
 	testCases := []struct {
 		globalConfig                     v1beta1.KafkaClusterSpec
 		externalListenerSpecifiedConfigs v1beta1.ExternalListenerConfig
 		expectedOutput                   map[string]v1beta1.IngressConfig
 	}{
-		// only global configuration is set
+		// only globalEnvoy configuration is set
 		{
-			*defaultKafkaCluster,
+			*defaultKafkaClusterWithEnvoy,
 			v1beta1.ExternalListenerConfig{
 				CommonListenerSpec: v1beta1.CommonListenerSpec{
 					Type:          "plaintext",
@@ -691,12 +712,27 @@ func TestGetEnvoyIngressConfigs(t *testing.T) {
 				ExternalStartingPort: 19090,
 			},
 			map[string]v1beta1.IngressConfig{
-				IngressConfigGlobalName: {EnvoyConfig: &defaultKafkaCluster.EnvoyConfig},
+				IngressConfigGlobalName: {EnvoyConfig: &defaultKafkaClusterWithEnvoy.EnvoyConfig},
 			},
 		},
-		//// ExternalListener Specified config is set
+		// only globalIstio ingress configuration is set
 		{
-			*defaultKafkaCluster,
+			*defaultKafkaClusterWithIstioIngress,
+			v1beta1.ExternalListenerConfig{
+				CommonListenerSpec: v1beta1.CommonListenerSpec{
+					Type:          "plaintext",
+					Name:          "external",
+					ContainerPort: 9094,
+				},
+				ExternalStartingPort: 19090,
+			},
+			map[string]v1beta1.IngressConfig{
+				IngressConfigGlobalName: {IstioIngressConfig: &defaultKafkaClusterWithIstioIngress.IstioIngressConfig},
+			},
+		},
+		// ExternalListener Specified config is set with EnvoyIngress
+		{
+			*defaultKafkaClusterWithEnvoy,
 			v1beta1.ExternalListenerConfig{
 				CommonListenerSpec: v1beta1.CommonListenerSpec{
 					Type:          "plaintext",
@@ -705,6 +741,7 @@ func TestGetEnvoyIngressConfigs(t *testing.T) {
 				},
 				ExternalStartingPort: 19090,
 				Config: &v1beta1.Config{
+					DefaultIngressConfig: "az1",
 					IngressConfig: map[string]v1beta1.IngressConfig{
 						"az1": {
 							IngressServiceSettings: v1beta1.IngressServiceSettings{
@@ -766,17 +803,176 @@ func TestGetEnvoyIngressConfigs(t *testing.T) {
 				},
 			},
 		},
+		// ExternalListener Specified config is set with IstioIngress
+		{
+			*defaultKafkaClusterWithIstioIngress,
+			v1beta1.ExternalListenerConfig{
+				CommonListenerSpec: v1beta1.CommonListenerSpec{
+					Type:          "plaintext",
+					Name:          "external",
+					ContainerPort: 9094,
+				},
+				ExternalStartingPort: 19090,
+				Config: &v1beta1.Config{
+					DefaultIngressConfig: "az1",
+					IngressConfig: map[string]v1beta1.IngressConfig{
+						"az1": {
+							IngressServiceSettings: v1beta1.IngressServiceSettings{
+								HostnameOverride: "foo.bar",
+							},
+							IstioIngressConfig: &v1beta1.IstioIngressConfig{
+								Replicas:    3,
+								Annotations: map[string]string{"az1": "region"},
+							},
+						},
+						"az2": {
+							IstioIngressConfig: &v1beta1.IstioIngressConfig{
+								Annotations: map[string]string{"az2": "region"},
+							},
+						},
+					},
+				},
+			},
+			map[string]v1beta1.IngressConfig{
+				"az1": {
+					IngressServiceSettings: v1beta1.IngressServiceSettings{
+						HostnameOverride: "foo.bar",
+					},
+					IstioIngressConfig: &v1beta1.IstioIngressConfig{
+						Resources: &corev1.ResourceRequirements{
+							Limits: corev1.ResourceList{
+								"cpu":    resource.MustParse("100m"),
+								"memory": resource.MustParse("100Mi"),
+							},
+							Requests: corev1.ResourceList{
+								"cpu":    resource.MustParse("100m"),
+								"memory": resource.MustParse("100Mi"),
+							},
+						},
+						Replicas:           3,
+						Annotations:        map[string]string{"az1": "region"},
+					},
+				},
+				"az2": {
+					IstioIngressConfig: &v1beta1.IstioIngressConfig{
+						Resources: &corev1.ResourceRequirements{
+							Limits: corev1.ResourceList{
+								"cpu":    resource.MustParse("100m"),
+								"memory": resource.MustParse("100Mi"),
+							},
+							Requests: corev1.ResourceList{
+								"cpu":    resource.MustParse("100m"),
+								"memory": resource.MustParse("100Mi"),
+							},
+						},
+						Annotations:        map[string]string{"az2": "region"},
+						Replicas:           1,
+					},
+				},
+			},
+		},
 	}
 	for _, testCase := range testCases {
-		envoyConfigs, err := GetIngressConfigs(testCase.globalConfig, testCase.externalListenerSpecifiedConfigs)
+		ingressConfigs, _, err := GetIngressConfigs(testCase.globalConfig, testCase.externalListenerSpecifiedConfigs)
 		if err != nil {
 			t.Errorf("unexpected error occured during merging envoyconfigs")
 		}
-		if len(envoyConfigs) != len(testCase.expectedOutput) {
-			t.Errorf("size of the merged slice of envoyConfig mismatch - expected: %d, actual: %d", len(testCase.expectedOutput), len(envoyConfigs))
+		if len(ingressConfigs) != len(testCase.expectedOutput) {
+			t.Errorf("size of the merged slice of envoyConfig mismatch - expected: %d, actual: %d", len(testCase.expectedOutput), len(ingressConfigs))
 		}
-		for i, envoyConfig := range envoyConfigs {
+		for i, envoyConfig := range ingressConfigs {
 			assert.DeepEqual(t, envoyConfig, testCase.expectedOutput[i])
+		}
+	}
+}
+
+func TestIsIngressConfigInUse(t *testing.T) {
+	logger := zap.New()
+	testCases := []struct {
+		clusterSpec    v1beta1.KafkaClusterSpec
+		iConfigName    string
+		expectedOutput bool
+	}{
+		// Only the global config is in use
+		{
+			iConfigName: IngressConfigGlobalName,
+			expectedOutput: true,
+		},
+		// Config is in use with config group
+		{
+			iConfigName: "foo",
+			clusterSpec: v1beta1.KafkaClusterSpec{
+				BrokerConfigGroups: map[string]v1beta1.BrokerConfig{
+					"default": {
+						BrokerIdBindings: []string{"foo"},
+					},
+				},
+				Brokers: []v1beta1.Broker{
+					{Id: 0, BrokerConfigGroup: "default"},
+					{Id: 1, BrokerConfigGroup: "default"},
+					{Id: 2, BrokerConfigGroup: "default"},
+				},
+			},
+			expectedOutput: true,
+		},
+		// Config is in use without config group
+		{
+			iConfigName: "foo",
+			clusterSpec: v1beta1.KafkaClusterSpec{
+				Brokers: []v1beta1.Broker{
+					{Id: 0, BrokerConfig: &v1beta1.BrokerConfig{
+						BrokerIdBindings:   []string{"foo"},
+					}},
+					{Id: 1, BrokerConfig: &v1beta1.BrokerConfig{
+						BrokerIdBindings:   []string{"foo"},
+					}},
+					{Id: 2, BrokerConfig: &v1beta1.BrokerConfig{
+						BrokerIdBindings:   []string{"foo"},
+					}},
+				},
+			},
+			expectedOutput: true,
+		},
+		// Config is not in use with config group
+		{
+			iConfigName: "bar",
+			clusterSpec: v1beta1.KafkaClusterSpec{
+				BrokerConfigGroups: map[string]v1beta1.BrokerConfig{
+					"default": {
+						BrokerIdBindings: []string{"foo"},
+					},
+				},
+				Brokers: []v1beta1.Broker{
+					{Id: 0, BrokerConfigGroup: "default"},
+					{Id: 1, BrokerConfigGroup: "default"},
+					{Id: 2, BrokerConfigGroup: "default"},
+				},
+			},
+			expectedOutput: false,
+		},
+		// Config is not in use without config group
+		{
+			iConfigName: "bar",
+			clusterSpec: v1beta1.KafkaClusterSpec{
+				Brokers: []v1beta1.Broker{
+					{Id: 0, BrokerConfig: &v1beta1.BrokerConfig{
+						BrokerIdBindings:   []string{"foo"},
+					}},
+					{Id: 1, BrokerConfig: &v1beta1.BrokerConfig{
+						BrokerIdBindings:   []string{"foo"},
+					}},
+					{Id: 2, BrokerConfig: &v1beta1.BrokerConfig{
+						BrokerIdBindings:   []string{"foo"},
+					}},
+				},
+			},
+			expectedOutput: false,
+		},
+	}
+	for _, testCase := range testCases {
+		result := IsIngressConfigInUse(testCase.iConfigName, testCase.clusterSpec, logger)
+		if result != testCase.expectedOutput {
+			t.Errorf("result does not match with the expected output - expected: %v, actual: %v", result, testCase.expectedOutput)
 		}
 	}
 }

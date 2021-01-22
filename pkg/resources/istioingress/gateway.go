@@ -33,7 +33,7 @@ func (r *Reconciler) gateway(log logr.Logger, externalListenerConfig v1beta1.Ext
 	if ingressConfigName == util.IngressConfigGlobalName {
 		gatewayName = fmt.Sprintf(gatewayNameTemplate, r.KafkaCluster.Name, externalListenerConfig.Name)
 	} else {
-		gatewayName = fmt.Sprintf(gatewayNameTemplate, r.KafkaCluster.Name, externalListenerConfig.Name, ingressConfigName)
+		gatewayName = fmt.Sprintf(gatewayNameTemplateWithScope, r.KafkaCluster.Name, externalListenerConfig.Name, ingressConfigName)
 	}
 	return &v1alpha3.Gateway{
 		ObjectMeta: templates.ObjectMeta(gatewayName,

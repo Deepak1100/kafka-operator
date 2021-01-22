@@ -82,7 +82,7 @@ func (r *Reconciler) deployment(log logr.Logger, extListener v1beta1.ExternalLis
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels:      labelsForEnvoyIngress(r.KafkaCluster.GetName(), extListener.Name),
-					Annotations: generatePodAnnotations(r.KafkaCluster, extListener, ingressConfig, ingressConfigName, log),
+					Annotations: generatePodAnnotations(r.KafkaCluster, extListener, ingressConfigName, log),
 				},
 				Spec: corev1.PodSpec{
 					ServiceAccountName: ingressConfig.EnvoyConfig.GetServiceAccount(),
@@ -135,11 +135,10 @@ func getExposedContainerPorts(extListener v1beta1.ExternalListenerConfig, broker
 }
 
 func generatePodAnnotations(kafkaCluster *v1beta1.KafkaCluster,
-	extListener v1beta1.ExternalListenerConfig,
-	ingressConfig v1beta1.IngressConfig, ingressConfigName string,
+	extListener v1beta1.ExternalListenerConfig, ingressConfigName string,
 	log logr.Logger) map[string]string {
 	hashedEnvoyConfig := sha256.Sum256([]byte(
-		GenerateEnvoyConfig(kafkaCluster, extListener, ingressConfig, ingressConfigName, log)))
+		GenerateEnvoyConfig(kafkaCluster, extListener, ingressConfigName, log)))
 	annotations := map[string]string{
 		"envoy.yaml.hash": hex.EncodeToString(hashedEnvoyConfig[:]),
 	}

@@ -37,7 +37,7 @@ import (
 )
 
 func (r *Reconciler) configMap(log logr.Logger, extListener v1beta1.ExternalListenerConfig,
-	ingressConfig v1beta1.IngressConfig, ingressConfigName string) runtime.Object {
+	_ v1beta1.IngressConfig, ingressConfigName string) runtime.Object {
 	var configMapName string
 	if ingressConfigName == util.IngressConfigGlobalName {
 		configMapName = fmt.Sprintf(envoyVolumeAndConfigName, extListener.Name, r.KafkaCluster.GetName())
@@ -49,7 +49,7 @@ func (r *Reconciler) configMap(log logr.Logger, extListener v1beta1.ExternalList
 		ObjectMeta: templates.ObjectMeta(
 			configMapName,
 			labelsForEnvoyIngress(r.KafkaCluster.GetName(), extListener.Name), r.KafkaCluster),
-		Data: map[string]string{"envoy.yaml": GenerateEnvoyConfig(r.KafkaCluster, extListener, ingressConfig, ingressConfigName, log)},
+		Data: map[string]string{"envoy.yaml": GenerateEnvoyConfig(r.KafkaCluster, extListener, ingressConfigName, log)},
 	}
 	return configMap
 }
@@ -72,7 +72,7 @@ func generateAnyCastAddressValue(kc *v1beta1.KafkaCluster) string {
 }
 
 func GenerateEnvoyConfig(kc *v1beta1.KafkaCluster, elistener v1beta1.ExternalListenerConfig,
-	ingressConfig v1beta1.IngressConfig, ingressConfigName string, log logr.Logger) string {
+	ingressConfigName string, log logr.Logger) string {
 
 	adminConfig := envoybootstrap.Admin{
 		AccessLogPath: "/tmp/admin_access.log",
