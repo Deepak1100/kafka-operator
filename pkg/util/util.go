@@ -344,7 +344,7 @@ func GetBrokerConfig(broker v1beta1.Broker, clusterSpec v1beta1.KafkaClusterSpec
 
 func dedupStorageConfigs(elements []v1beta1.StorageConfig) []v1beta1.StorageConfig {
 	encountered := make(map[string]struct{})
-	result := []v1beta1.StorageConfig{}
+	result := make([]v1beta1.StorageConfig, 0)
 
 	for _, v := range elements {
 		if _, ok := encountered[v.MountPath]; !ok {

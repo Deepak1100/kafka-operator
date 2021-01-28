@@ -19,9 +19,7 @@ import (
 
 	istioOperatorApi "github.com/banzaicloud/istio-operator/pkg/apis/istio/v1beta1"
 	"github.com/go-logr/logr"
-	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/util/intstr"
 
 	"github.com/banzaicloud/kafka-operator/api/v1beta1"
 	"github.com/banzaicloud/kafka-operator/pkg/resources/templates"
@@ -54,41 +52,12 @@ func (r *Reconciler) meshgateway(log logr.Logger, externalListenerConfig v1beta1
 				},
 				ServiceType: externalListenerConfig.GetServiceType(),
 			},
-			Ports: generateExternalPorts(r.KafkaCluster.Spec,
+			Ports: kafkautils.GetExposedServicePorts(externalListenerConfig,
 				util.GetBrokerIdsFromStatusAndSpec(r.KafkaCluster.Status.BrokersState, r.KafkaCluster.Spec.Brokers, log),
-				externalListenerConfig, log, ingressConfigName),
+				r.KafkaCluster.Spec, ingressConfigName, log, "tcp-"),
 			Type: istioOperatorApi.GatewayTypeIngress,
 		},
 	}
 
 	return mgateway
-}
-
-func generateExternalPorts(kc v1beta1.KafkaClusterSpec, brokerIds []int,
-	externalListenerConfig v1beta1.ExternalListenerConfig, log logr.Logger, ingressConfigName string) []corev1.ServicePort {
-
-	generatedPorts := make([]corev1.ServicePort, 0)
-	for _, brokerId := range brokerIds {
-		brokerConfig, err := util.GetBrokerConfig(kc.Brokers[brokerId], kc)
-		if err != nil {
-			log.Error(err, "could not determine brokerConfig")
-			continue
-		}
-		if len(brokerConfig.BrokerIdBindings) == 0 ||
-			util.StringSliceContains(brokerConfig.BrokerIdBindings, ingressConfigName) {
-			generatedPorts = append(generatedPorts, corev1.ServicePort{
-				Name:       fmt.Sprintf("tcp-broker-%d", brokerId),
-				TargetPort: intstr.FromInt(int(externalListenerConfig.ExternalStartingPort) + brokerId),
-				Port:       externalListenerConfig.ExternalStartingPort + int32(brokerId),
-			})
-		}
-	}
-
-	generatedPorts = append(generatedPorts, corev1.ServicePort{
-		Name:       fmt.Sprintf(kafkautils.AllBrokerServiceTemplate, "tcp"),
-		TargetPort: intstr.FromInt(int(externalListenerConfig.GetAnyCastPort())),
-		Port:       externalListenerConfig.GetAnyCastPort(),
-	})
-
-	return generatedPorts
 }

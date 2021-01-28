@@ -690,10 +690,9 @@ func TestGetIngressConfigs(t *testing.T) {
 					"memory": resource.MustParse("100Mi"),
 				},
 			},
-			Replicas:           1,
+			Replicas: 1,
 		},
 	}
-
 
 	testCases := []struct {
 		globalConfig                     v1beta1.KafkaClusterSpec
@@ -849,8 +848,8 @@ func TestGetIngressConfigs(t *testing.T) {
 								"memory": resource.MustParse("100Mi"),
 							},
 						},
-						Replicas:           3,
-						Annotations:        map[string]string{"az1": "region"},
+						Replicas:    3,
+						Annotations: map[string]string{"az1": "region"},
 					},
 				},
 				"az2": {
@@ -865,8 +864,8 @@ func TestGetIngressConfigs(t *testing.T) {
 								"memory": resource.MustParse("100Mi"),
 							},
 						},
-						Annotations:        map[string]string{"az2": "region"},
-						Replicas:           1,
+						Annotations: map[string]string{"az2": "region"},
+						Replicas:    1,
 					},
 				},
 			},
@@ -875,7 +874,7 @@ func TestGetIngressConfigs(t *testing.T) {
 	for _, testCase := range testCases {
 		ingressConfigs, _, err := GetIngressConfigs(testCase.globalConfig, testCase.externalListenerSpecifiedConfigs)
 		if err != nil {
-			t.Errorf("unexpected error occured during merging envoyconfigs")
+			t.Errorf("unexpected error occurred during merging envoyconfigs")
 		}
 		if len(ingressConfigs) != len(testCase.expectedOutput) {
 			t.Errorf("size of the merged slice of envoyConfig mismatch - expected: %d, actual: %d", len(testCase.expectedOutput), len(ingressConfigs))
@@ -895,7 +894,7 @@ func TestIsIngressConfigInUse(t *testing.T) {
 	}{
 		// Only the global config is in use
 		{
-			iConfigName: IngressConfigGlobalName,
+			iConfigName:    IngressConfigGlobalName,
 			expectedOutput: true,
 		},
 		// Config is in use with config group
@@ -921,13 +920,13 @@ func TestIsIngressConfigInUse(t *testing.T) {
 			clusterSpec: v1beta1.KafkaClusterSpec{
 				Brokers: []v1beta1.Broker{
 					{Id: 0, BrokerConfig: &v1beta1.BrokerConfig{
-						BrokerIdBindings:   []string{"foo"},
+						BrokerIdBindings: []string{"foo"},
 					}},
 					{Id: 1, BrokerConfig: &v1beta1.BrokerConfig{
-						BrokerIdBindings:   []string{"foo"},
+						BrokerIdBindings: []string{"foo"},
 					}},
 					{Id: 2, BrokerConfig: &v1beta1.BrokerConfig{
-						BrokerIdBindings:   []string{"foo"},
+						BrokerIdBindings: []string{"foo"},
 					}},
 				},
 			},
@@ -956,13 +955,13 @@ func TestIsIngressConfigInUse(t *testing.T) {
 			clusterSpec: v1beta1.KafkaClusterSpec{
 				Brokers: []v1beta1.Broker{
 					{Id: 0, BrokerConfig: &v1beta1.BrokerConfig{
-						BrokerIdBindings:   []string{"foo"},
+						BrokerIdBindings: []string{"foo"},
 					}},
 					{Id: 1, BrokerConfig: &v1beta1.BrokerConfig{
-						BrokerIdBindings:   []string{"foo"},
+						BrokerIdBindings: []string{"foo"},
 					}},
 					{Id: 2, BrokerConfig: &v1beta1.BrokerConfig{
-						BrokerIdBindings:   []string{"foo"},
+						BrokerIdBindings: []string{"foo"},
 					}},
 				},
 			},

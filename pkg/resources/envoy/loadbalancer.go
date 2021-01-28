@@ -18,10 +18,8 @@ import (
 	"fmt"
 
 	"github.com/go-logr/logr"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/util/intstr"
-
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 
 	"github.com/banzaicloud/kafka-operator/api/v1beta1"
 	"github.com/banzaicloud/kafka-operator/pkg/resources/templates"
@@ -42,9 +40,9 @@ func (r *Reconciler) service(log logr.Logger, extListener v1beta1.ExternalListen
 		serviceName = fmt.Sprintf(envoyutils.EnvoyServiceNameWithScope, extListener.Name, ingressConfigName, r.KafkaCluster.GetName())
 	}
 
-	exposedPorts := getExposedServicePorts(extListener,
+	exposedPorts := kafkautils.GetExposedServicePorts(extListener,
 		util.GetBrokerIdsFromStatusAndSpec(r.KafkaCluster.Status.BrokersState, r.KafkaCluster.Spec.Brokers, log),
-		r.KafkaCluster.Spec, ingressConfigName, log)
+		r.KafkaCluster.Spec, ingressConfigName, log, "")
 
 	service := &corev1.Service{
 		ObjectMeta: templates.ObjectMetaWithAnnotations(
@@ -61,34 +59,4 @@ func (r *Reconciler) service(log logr.Logger, extListener v1beta1.ExternalListen
 		},
 	}
 	return service
-}
-
-func getExposedServicePorts(extListener v1beta1.ExternalListenerConfig, brokersIds []int,
-	kafkaClusterSpec v1beta1.KafkaClusterSpec, ingressConfigName string, log logr.Logger) []corev1.ServicePort {
-	var exposedPorts []corev1.ServicePort
-	for _, brokerId := range brokersIds {
-		brokerConfig, err := util.GetBrokerConfig(kafkaClusterSpec.Brokers[brokerId], kafkaClusterSpec)
-		if err != nil {
-			log.Error(err, "could not determine brokerConfig")
-			continue
-		}
-		if len(brokerConfig.BrokerIdBindings) == 0 ||
-			util.StringSliceContains(brokerConfig.BrokerIdBindings, ingressConfigName) {
-
-			exposedPorts = append(exposedPorts, corev1.ServicePort{
-				Name:       fmt.Sprintf("broker-%d", brokerId),
-				Port:       extListener.ExternalStartingPort + int32(brokerId),
-				TargetPort: intstr.FromInt(int(extListener.ExternalStartingPort) + brokerId),
-				Protocol:   corev1.ProtocolTCP,
-			})
-		}
-	}
-
-	exposedPorts = append(exposedPorts, corev1.ServicePort{
-		Name:       fmt.Sprintf(kafkautils.AllBrokerServiceTemplate, "tcp"),
-		TargetPort: intstr.FromInt(int(extListener.GetAnyCastPort())),
-		Port:       extListener.GetAnyCastPort(),
-	})
-
-	return exposedPorts
 }
