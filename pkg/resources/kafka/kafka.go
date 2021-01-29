@@ -265,7 +265,7 @@ func (r *Reconciler) Reconcile(log logr.Logger) error {
 			}
 		}
 		o := r.pod(broker.Id, brokerConfig, pvcs, log)
-		err = r.reconcileKafkaPod(log, o.(*corev1.Pod))
+		err = r.reconcileKafkaPod(log, o.(*corev1.Pod), brokerConfig)
 		if err != nil {
 			return err
 		}
@@ -468,7 +468,7 @@ func (r *Reconciler) getServerAndClientDetails() (string, string, []string, erro
 	return serverPass, clientPass, superUsers, nil
 }
 
-func (r *Reconciler) reconcileKafkaPod(log logr.Logger, desiredPod *corev1.Pod) error {
+func (r *Reconciler) reconcileKafkaPod(log logr.Logger, desiredPod *corev1.Pod, bConfig *v1beta1.BrokerConfig) error {
 	currentPod := desiredPod.DeepCopy()
 	desiredType := reflect.TypeOf(desiredPod)
 
@@ -495,9 +495,14 @@ func (r *Reconciler) reconcileKafkaPod(log logr.Logger, desiredPod *corev1.Pod) 
 		if err := r.Client.Create(context.TODO(), desiredPod); err != nil {
 			return errorfactory.New(errorfactory.APIFailure{}, err, "creating resource failed", "kind", desiredType)
 		}
-
+		// Update status what externalListener configs are in use
+		statusErr := k8sutil.UpdateBrokerStatus(r.Client, []string{desiredPod.Labels["brokerId"]},
+			r.KafkaCluster, bConfig.BrokerIdBindings, log)
+		if statusErr != nil {
+			return errorfactory.New(errorfactory.StatusUpdateError{}, statusErr, "updating status for resource failed", "kind", desiredType)
+		}
 		// Update status to Config InSync because broker is configured to go
-		statusErr := k8sutil.UpdateBrokerStatus(r.Client, []string{desiredPod.Labels["brokerId"]}, r.KafkaCluster, v1beta1.ConfigInSync, log)
+		statusErr = k8sutil.UpdateBrokerStatus(r.Client, []string{desiredPod.Labels["brokerId"]}, r.KafkaCluster, v1beta1.ConfigInSync, log)
 		if statusErr != nil {
 			return errorfactory.New(errorfactory.StatusUpdateError{}, statusErr, "updating status for resource failed", "kind", desiredType)
 		}
@@ -797,7 +802,7 @@ func (r *Reconciler) createExternalListenerStatuses(log logr.Logger) (map[string
 		}
 		listenerStatusList := make(v1beta1.ListenerStatusList, 0, len(r.KafkaCluster.Spec.Brokers)+1)
 		for iConfigName, iConfig := range ingressConfigs {
-			if !util.IsIngressConfigInUse(iConfigName, r.KafkaCluster.Spec, log) && iConfigName != defaultControllerName {
+			if !util.IsIngressConfigInUse(iConfigName, r.KafkaCluster, log) && iConfigName != defaultControllerName {
 				continue
 			}
 			if iConfig.HostnameOverride != "" {

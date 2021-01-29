@@ -111,10 +111,19 @@ func getExposedContainerPorts(extListener v1beta1.ExternalListenerConfig, broker
 	var exposedPorts []corev1.ContainerPort
 
 	for _, id := range brokerIds {
-		brokerConfig, err := util.GetBrokerConfig(kafkaClusterSpec.Brokers[id], kafkaClusterSpec)
-		if err != nil {
-			log.Error(err, "could not generate envoy ingress deployment")
-			continue
+		var brokerConfig *v1beta1.BrokerConfig
+		var err error
+		// This check is used in case of broker delete. In case of broker delete there is some time when the CC removes the broker
+		// gracefully which means we have to generate the port for that broker as well. At that time the status contains
+		// but the broker spec does not contain the required config values.
+		if len(kafkaClusterSpec.Brokers)-1 < id {
+			brokerConfig = &v1beta1.BrokerConfig{}
+		} else {
+			brokerConfig, err = util.GetBrokerConfig(kafkaClusterSpec.Brokers[id], kafkaClusterSpec)
+			if err != nil {
+				log.Error(err, "could not generate envoy ingress deployment")
+				continue
+			}
 		}
 		if len(brokerConfig.BrokerIdBindings) == 0 ||
 			util.StringSliceContains(brokerConfig.BrokerIdBindings, ingressConfigName) {

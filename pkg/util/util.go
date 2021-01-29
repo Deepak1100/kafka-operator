@@ -211,19 +211,24 @@ func GetBrokerIdsFromStatusAndSpec(brokerStatuses map[string]v1beta1.BrokerState
 }
 
 // IsIngressConfigInUse returns true if the provided ingressConfigName is bound to the given broker
-func IsIngressConfigInUse(iConfigName string, clusterSpec v1beta1.KafkaClusterSpec, log logr.Logger) bool {
+func IsIngressConfigInUse(iConfigName string, cluster *v1beta1.KafkaCluster, log logr.Logger) bool {
 	// Check if the global default is in use
 	if iConfigName == IngressConfigGlobalName {
 		return true
 	}
 	// Check if the given iConfigName is bound to a given broker
-	for _, broker := range clusterSpec.Brokers {
-		brokerConfig, err := GetBrokerConfig(broker, clusterSpec)
+	for _, broker := range cluster.Spec.Brokers {
+		brokerConfig, err := GetBrokerConfig(broker, cluster.Spec)
 		if err != nil {
 			log.Error(err, "could not determine if ingressConfig is in use")
 			return false
 		}
 		if StringSliceContains(brokerConfig.BrokerIdBindings, iConfigName) {
+			return true
+		}
+	}
+	for _, status := range cluster.Status.BrokersState {
+		if StringSliceContains(status.ExternalListenerConfigNames, iConfigName) {
 			return true
 		}
 	}

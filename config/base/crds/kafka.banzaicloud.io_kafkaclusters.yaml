@@ -6173,6 +6173,12 @@ spec:
                   configurationState:
                     description: ConfigurationState holds info about the config
                     type: string
+                  externalListenerConfigNames:
+                    description: ExternalListenerConfigNames holds info about what
+                      listener config is in use with the broker
+                    items:
+                      type: string
+                    type: array
                   gracefulActionState:
                     description: GracefulActionState holds info about cc action status
                     properties:

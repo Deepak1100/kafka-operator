@@ -73,7 +73,7 @@ func (r *Reconciler) Reconcile(log logr.Logger) error {
 					return err
 				}
 				for name, ingressConfig := range ingressConfigs {
-					if !util.IsIngressConfigInUse(name, r.KafkaCluster.Spec, log) && name != defaultControllerName {
+					if !util.IsIngressConfigInUse(name, r.KafkaCluster, log) && name != defaultControllerName {
 						continue
 					}
 					for _, res := range []resources.ResourceWithLogAndExternalListenerConfigAndIngressConfigWithName{

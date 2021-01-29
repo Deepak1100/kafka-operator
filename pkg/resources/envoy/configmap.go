@@ -92,10 +92,19 @@ func GenerateEnvoyConfig(kc *v1beta1.KafkaCluster, elistener v1beta1.ExternalLis
 	var clusters []*envoyapi.Cluster
 
 	for _, brokerId := range util.GetBrokerIdsFromStatusAndSpec(kc.Status.BrokersState, kc.Spec.Brokers, log) {
-		brokerConfig, err := util.GetBrokerConfig(kc.Spec.Brokers[brokerId], kc.Spec)
-		if err != nil {
-			log.Error(err, "could not generate envoy ingress config")
-			continue
+		var brokerConfig *v1beta1.BrokerConfig
+		var err error
+		// This check is used in case of broker delete. In case of broker delete there is some time when the CC removes the broker
+		// gracefully which means we have to generate the port for that broker as well. At that time the status contains
+		// but the broker spec does not contain the required config values.
+		if len(kc.Spec.Brokers)-1 < brokerId {
+			brokerConfig = &v1beta1.BrokerConfig{}
+		} else {
+			brokerConfig, err = util.GetBrokerConfig(kc.Spec.Brokers[brokerId], kc.Spec)
+			if err != nil {
+				log.Error(err, "could not generate envoy ingress config")
+				continue
+			}
 		}
 		if len(brokerConfig.BrokerIdBindings) == 0 || util.StringSliceContains(brokerConfig.BrokerIdBindings, ingressConfigName) {
 			listeners = append(listeners, &envoyapi.Listener{

@@ -19,11 +19,8 @@ import (
 	"strings"
 
 	"github.com/go-logr/logr"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/util/intstr"
 
 	"github.com/banzaicloud/kafka-operator/api/v1alpha1"
-	"github.com/banzaicloud/kafka-operator/api/v1beta1"
 	"github.com/banzaicloud/kafka-operator/pkg/util"
 )
 
@@ -176,43 +173,4 @@ func collectTouchedConfigs(currentConfigs, desiredConfigs map[string]string, log
 
 	log.V(1).Info("configs have been changed", "configs", touchedConfigs)
 	return touchedConfigs
-}
-
-func GetExposedServicePorts(extListener v1beta1.ExternalListenerConfig, brokersIds []int, kafkaClusterSpec v1beta1.KafkaClusterSpec,
-	ingressConfigName string, log logr.Logger, portNamePrefix string) []corev1.ServicePort {
-	var exposedPorts []corev1.ServicePort
-	var err error
-	for _, brokerId := range brokersIds {
-		var brokerConfig *v1beta1.BrokerConfig
-		// This check is used in case of broker delete. In case of broker delete there is some time when the CC removes the broker
-		// gracefully which means we have to generate the port for that broker as well. At that time the status contains
-		// but the broker spec does not contain the required config values.
-		if len(kafkaClusterSpec.Brokers)-1 < brokerId {
-			brokerConfig = &v1beta1.BrokerConfig{}
-		} else {
-			brokerConfig, err = util.GetBrokerConfig(kafkaClusterSpec.Brokers[brokerId], kafkaClusterSpec)
-			if err != nil {
-				log.Error(err, "could not determine brokerConfig")
-				continue
-			}
-		}
-		if len(brokerConfig.BrokerIdBindings) == 0 ||
-			util.StringSliceContains(brokerConfig.BrokerIdBindings, ingressConfigName) {
-
-			exposedPorts = append(exposedPorts, corev1.ServicePort{
-				Name:       fmt.Sprintf("%sbroker-%d", portNamePrefix, brokerId),
-				Port:       extListener.ExternalStartingPort + int32(brokerId),
-				TargetPort: intstr.FromInt(int(extListener.ExternalStartingPort) + brokerId),
-				Protocol:   corev1.ProtocolTCP,
-			})
-		}
-	}
-
-	exposedPorts = append(exposedPorts, corev1.ServicePort{
-		Name:       fmt.Sprintf(AllBrokerServiceTemplate, "tcp"),
-		TargetPort: intstr.FromInt(int(extListener.GetAnyCastPort())),
-		Port:       extListener.GetAnyCastPort(),
-	})
-
-	return exposedPorts
 }

@@ -19,7 +19,9 @@ import (
 
 	istioOperatorApi "github.com/banzaicloud/istio-operator/pkg/apis/istio/v1beta1"
 	"github.com/go-logr/logr"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/intstr"
 
 	"github.com/banzaicloud/kafka-operator/api/v1beta1"
 	"github.com/banzaicloud/kafka-operator/pkg/resources/templates"
@@ -52,12 +54,50 @@ func (r *Reconciler) meshgateway(log logr.Logger, externalListenerConfig v1beta1
 				},
 				ServiceType: externalListenerConfig.GetServiceType(),
 			},
-			Ports: kafkautils.GetExposedServicePorts(externalListenerConfig,
+			Ports: generateExternalPorts(r.KafkaCluster.Spec,
 				util.GetBrokerIdsFromStatusAndSpec(r.KafkaCluster.Status.BrokersState, r.KafkaCluster.Spec.Brokers, log),
-				r.KafkaCluster.Spec, ingressConfigName, log, "tcp-"),
+				externalListenerConfig, log, ingressConfigName),
 			Type: istioOperatorApi.GatewayTypeIngress,
 		},
 	}
 
 	return mgateway
+}
+
+func generateExternalPorts(kc v1beta1.KafkaClusterSpec, brokerIds []int,
+	externalListenerConfig v1beta1.ExternalListenerConfig, log logr.Logger, ingressConfigName string) []corev1.ServicePort {
+
+	generatedPorts := make([]corev1.ServicePort, 0)
+	var err error
+	for _, brokerId := range brokerIds {
+		var brokerConfig *v1beta1.BrokerConfig
+		// This check is used in case of broker delete. In case of broker delete there is some time when the CC removes the broker
+		// gracefully which means we have to generate the port for that broker as well. At that time the status contains
+		// but the broker spec does not contain the required config values.
+		if len(kc.Brokers)-1 < brokerId {
+			brokerConfig = &v1beta1.BrokerConfig{}
+		} else {
+			brokerConfig, err = util.GetBrokerConfig(kc.Brokers[brokerId], kc)
+			if err != nil {
+				log.Error(err, "could not determine brokerConfig")
+				continue
+			}
+		}
+		if len(brokerConfig.BrokerIdBindings) == 0 ||
+			util.StringSliceContains(brokerConfig.BrokerIdBindings, ingressConfigName) {
+			generatedPorts = append(generatedPorts, corev1.ServicePort{
+				Name:       fmt.Sprintf("tcp-broker-%d", brokerId),
+				TargetPort: intstr.FromInt(int(externalListenerConfig.ExternalStartingPort) + brokerId),
+				Port:       externalListenerConfig.ExternalStartingPort + int32(brokerId),
+			})
+		}
+	}
+
+	generatedPorts = append(generatedPorts, corev1.ServicePort{
+		Name:       fmt.Sprintf(kafkautils.AllBrokerServiceTemplate, "tcp"),
+		TargetPort: intstr.FromInt(int(externalListenerConfig.GetAnyCastPort())),
+		Port:       externalListenerConfig.GetAnyCastPort(),
+	})
+
+	return generatedPorts
 }

@@ -94,6 +94,8 @@ func generateBrokerState(brokerIds []string, cluster *banzaicloudv1beta1.KafkaCl
 			brokerState = v1beta1.BrokerState{}
 		}
 		switch s := state.(type) {
+		case banzaicloudv1beta1.ExternalListenerConfigNames:
+			brokerState.ExternalListenerConfigNames = s
 		case banzaicloudv1beta1.RackAwarenessState:
 			brokerState.RackAwarenessState = s
 		case banzaicloudv1beta1.GracefulActionState:

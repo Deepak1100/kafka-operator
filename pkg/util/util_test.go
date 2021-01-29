@@ -888,7 +888,7 @@ func TestGetIngressConfigs(t *testing.T) {
 func TestIsIngressConfigInUse(t *testing.T) {
 	logger := zap.New()
 	testCases := []struct {
-		clusterSpec    v1beta1.KafkaClusterSpec
+		cluster        *v1beta1.KafkaCluster
 		iConfigName    string
 		expectedOutput bool
 	}{
@@ -900,16 +900,18 @@ func TestIsIngressConfigInUse(t *testing.T) {
 		// Config is in use with config group
 		{
 			iConfigName: "foo",
-			clusterSpec: v1beta1.KafkaClusterSpec{
-				BrokerConfigGroups: map[string]v1beta1.BrokerConfig{
-					"default": {
-						BrokerIdBindings: []string{"foo"},
+			cluster: &v1beta1.KafkaCluster{
+				Spec: v1beta1.KafkaClusterSpec{
+					BrokerConfigGroups: map[string]v1beta1.BrokerConfig{
+						"default": {
+							BrokerIdBindings: []string{"foo"},
+						},
 					},
-				},
-				Brokers: []v1beta1.Broker{
-					{Id: 0, BrokerConfigGroup: "default"},
-					{Id: 1, BrokerConfigGroup: "default"},
-					{Id: 2, BrokerConfigGroup: "default"},
+					Brokers: []v1beta1.Broker{
+						{Id: 0, BrokerConfigGroup: "default"},
+						{Id: 1, BrokerConfigGroup: "default"},
+						{Id: 2, BrokerConfigGroup: "default"},
+					},
 				},
 			},
 			expectedOutput: true,
@@ -917,7 +919,7 @@ func TestIsIngressConfigInUse(t *testing.T) {
 		// Config is in use without config group
 		{
 			iConfigName: "foo",
-			clusterSpec: v1beta1.KafkaClusterSpec{
+			cluster: &v1beta1.KafkaCluster{Spec: v1beta1.KafkaClusterSpec{
 				Brokers: []v1beta1.Broker{
 					{Id: 0, BrokerConfig: &v1beta1.BrokerConfig{
 						BrokerIdBindings: []string{"foo"},
@@ -930,12 +932,13 @@ func TestIsIngressConfigInUse(t *testing.T) {
 					}},
 				},
 			},
+			},
 			expectedOutput: true,
 		},
 		// Config is not in use with config group
 		{
 			iConfigName: "bar",
-			clusterSpec: v1beta1.KafkaClusterSpec{
+			cluster: &v1beta1.KafkaCluster{Spec: v1beta1.KafkaClusterSpec{
 				BrokerConfigGroups: map[string]v1beta1.BrokerConfig{
 					"default": {
 						BrokerIdBindings: []string{"foo"},
@@ -947,12 +950,13 @@ func TestIsIngressConfigInUse(t *testing.T) {
 					{Id: 2, BrokerConfigGroup: "default"},
 				},
 			},
+			},
 			expectedOutput: false,
 		},
 		// Config is not in use without config group
 		{
 			iConfigName: "bar",
-			clusterSpec: v1beta1.KafkaClusterSpec{
+			cluster: &v1beta1.KafkaCluster{Spec: v1beta1.KafkaClusterSpec{
 				Brokers: []v1beta1.Broker{
 					{Id: 0, BrokerConfig: &v1beta1.BrokerConfig{
 						BrokerIdBindings: []string{"foo"},
@@ -965,11 +969,12 @@ func TestIsIngressConfigInUse(t *testing.T) {
 					}},
 				},
 			},
+			},
 			expectedOutput: false,
 		},
 	}
 	for _, testCase := range testCases {
-		result := IsIngressConfigInUse(testCase.iConfigName, testCase.clusterSpec, logger)
+		result := IsIngressConfigInUse(testCase.iConfigName, testCase.cluster, logger)
 		if result != testCase.expectedOutput {
 			t.Errorf("result does not match with the expected output - expected: %v, actual: %v", result, testCase.expectedOutput)
 		}
